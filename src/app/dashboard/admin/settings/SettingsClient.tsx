@@ -3,17 +3,21 @@
 import React, { useState, useCallback } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Alert, Grid, InputAdornment, CircularProgress, Divider, Chip,
+  Alert, Grid, InputAdornment, CircularProgress, Divider, Chip, Tooltip, IconButton,
 } from '@mui/material';
 import {
   LocationOn as LocationIcon,
   Save as SaveIcon,
   Radar as RadiusIcon,
   Map as MapIcon,
+  ContentCopy as CopyIcon,
+  Refresh as RefreshIcon,
+  Business as OrgIcon,
 } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
 import { SiteSettings } from '@/types';
-import { saveSiteSettings } from '@/actions/settings';
+import { saveSiteSettings, regenerateInviteCode } from '@/actions/settings';
+import { useAuth } from '@/lib/context/AuthContext';
 
 export default function SettingsClient({ initialSettings }: { initialSettings: SiteSettings }) {
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
@@ -28,7 +32,10 @@ export default function SettingsClient({ initialSettings }: { initialSettings: S
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const supabase = createClient();
+  const { organization, refreshProfile } = useAuth();
 
   const fetchSettings = useCallback(async () => {
     const { data } = await supabase.from('site_settings').select('*').limit(1).single();
@@ -43,6 +50,30 @@ export default function SettingsClient({ initialSettings }: { initialSettings: S
       });
     }
   }, []);
+
+  const handleCopyInviteCode = () => {
+    if (organization?.invite_code) {
+      navigator.clipboard.writeText(organization.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleRegenerateCode = async () => {
+    setRegenerating(true);
+    setError('');
+    try {
+      const result = await regenerateInviteCode();
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccess('Invite code regenerated successfully!');
+        await refreshProfile();
+      }
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const useCurrentLocation = () => {
     setGettingLocation(true);
@@ -120,7 +151,57 @@ export default function SettingsClient({ initialSettings }: { initialSettings: S
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      {/* Location Card */}
+      {/* Organization Card */}
+      {organization && (
+        <Card sx={{ borderRadius: 3, mb: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+                <OrgIcon />
+              </Box>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>Organization</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Share the invite code with new members to let them join
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.5}>
+                  Organization Name
+                </Typography>
+                <Typography variant="body1" fontWeight={600}>{organization.name}</Typography>
+              </Box>
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.5}>
+                  Invite Code
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={organization.invite_code}
+                    sx={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 16, letterSpacing: 2, px: 1 }}
+                    color="primary"
+                    variant="outlined"
+                  />
+                  <Tooltip title={copied ? 'Copied!' : 'Copy invite code'}>
+                    <IconButton size="small" onClick={handleCopyInviteCode} color={copied ? 'success' : 'default'}>
+                      <CopyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Generate a new invite code (old code will stop working)">
+                    <IconButton size="small" onClick={handleRegenerateCode} disabled={regenerating}>
+                      {regenerating ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
       <Card sx={{ borderRadius: 3, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>

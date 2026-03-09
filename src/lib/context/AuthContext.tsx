@@ -3,11 +3,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import { Profile } from '@/types';
+import { Profile, Organization } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
+  organization: Organization | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -16,6 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  organization: null,
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -24,16 +26,28 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data: profileData } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    setProfile(data);
+    setProfile(profileData);
+
+    if (profileData?.org_id) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', profileData.org_id)
+        .single();
+      setOrganization(orgData);
+    } else {
+      setOrganization(null);
+    }
   };
 
   const refreshProfile = async () => {
@@ -48,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
+          setOrganization(null);
         }
         setLoading(false);
       }
@@ -61,10 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
+    setOrganization(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, organization, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

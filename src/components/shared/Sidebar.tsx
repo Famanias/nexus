@@ -21,6 +21,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/types';
 import { roleLabel } from '@/lib/utils/format';
+import { useAuth } from '@/lib/context/AuthContext';
 
 const DRAWER_WIDTH = 260;
 const DRAWER_MINI = 72;
@@ -46,6 +47,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const { organization } = useAuth();
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -99,9 +101,16 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         }}
       >
         {!collapsed && (
-          <Typography variant="h6" fontWeight={700} color="#fff" noWrap>
-            OJT Tracker
-          </Typography>
+          <Box>
+            <Typography variant="h6" fontWeight={700} color="#fff" noWrap>
+              OJT Tracker
+            </Typography>
+            {organization && (
+              <Typography variant="caption" color="rgba(255,255,255,0.55)" noWrap display="block" mt={0.25}>
+                {organization.name}
+              </Typography>
+            )}
+          </Box>
         )}
         <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: '#a5b4fc' }}>
           {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}

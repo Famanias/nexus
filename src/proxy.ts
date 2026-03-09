@@ -41,9 +41,9 @@ export async function proxy(request: NextRequest) {
   const role: string = (user?.user_metadata?.role as string) ?? 'ojt';
 
   // Public routes (unauthenticated access allowed)
-  const publicRoutes = ['/', '/login', '/docs', '/privacy', '/terms', '/contact'];
+  const publicRoutes = ['/', '/login', '/register', '/docs', '/privacy', '/terms', '/contact'];
   if (publicRoutes.includes(pathname)) {
-    if (user && (pathname === '/login' || pathname === '/')) {
+    if (user && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url));
     }
     return supabaseResponse;
@@ -51,6 +51,10 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes
   if (!user) {
+    // Allow unauthenticated API calls needed by the register flow
+    if (pathname.startsWith('/api/organizations')) {
+      return supabaseResponse;
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

@@ -49,3 +49,33 @@ export async function saveTimezone(id: string, timezone: string): Promise<{ erro
   if (error) return { error: error.message };
   return {};
 }
+
+export async function regenerateInviteCode(): Promise<{ code?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('org_id, role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || profile.role !== 'admin' || !profile.org_id) {
+    return { error: 'Only organization admins can regenerate the invite code.' };
+  }
+
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  const { error } = await supabase
+    .from('organizations')
+    .update({ invite_code: code })
+    .eq('id', profile.org_id);
+
+  if (error) return { error: error.message };
+  return { code };
+}

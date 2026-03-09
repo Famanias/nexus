@@ -13,8 +13,8 @@ import {
   AccessTime as ClockIcon,
 } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import { createClient as createAdmin } from '@/lib/supabase/client';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -23,6 +23,8 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get('registered');
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -108,6 +110,12 @@ export default function LoginForm() {
               Sign in to your account to continue
             </Typography>
 
+            {registered && (
+              <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                Account created successfully! Please sign in.
+              </Alert>
+            )}
+
             {error && (
               <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
                 {error}
@@ -174,6 +182,18 @@ export default function LoginForm() {
                 )}
               </Button>
             </form>
+
+            <Box sx={{ textAlign: 'center', mt: 3 }}>
+              <Typography variant="body2" color="text.secondary">
+                New to OJT Tracker?{' '}
+                <Link
+                  href="/register"
+                  style={{ color: '#4338ca', fontWeight: 600, textDecoration: 'none' }}
+                >
+                  Create or Join an Organization
+                </Link>
+              </Typography>
+            </Box>
 
             <Divider sx={{ my: 3 }}>
               <Typography variant="caption" color="text.secondary">

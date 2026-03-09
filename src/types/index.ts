@@ -4,11 +4,22 @@
 
 export type UserRole = 'ojt' | 'supervisor' | 'admin';
 
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  invite_code: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string;
   email: string;
   role: UserRole;
+  org_id?: string;
   avatar_url?: string;
   department?: string;
   required_hours: number;
@@ -19,6 +30,7 @@ export interface Profile {
 
 export interface SiteSettings {
   id: string;
+  org_id: string;
   site_name: string;
   latitude: number;
   longitude: number;
