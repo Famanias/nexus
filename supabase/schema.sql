@@ -211,8 +211,9 @@ create policy "Admins can update their organization" on organizations
 -- Profiles policies
 drop policy if exists "Users can view all profiles" on profiles;
 drop policy if exists "Users can view profiles in same org" on profiles;
-create policy "Users can view profiles in same org" on profiles
-  for select using (org_id = get_my_org_id());
+drop policy if exists "Users can view profiles in same org or own profile" on profiles;
+create policy "Users can view profiles in same org or own profile" on profiles
+  for select using (auth.uid() = id or org_id = get_my_org_id());
 drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile" on profiles
   for update using (auth.uid() = id);
@@ -474,23 +475,19 @@ create trigger trg_kanban_task_org_id
 create or replace function handle_new_user()
 returns trigger as $$
 declare
-  v_role     user_role := 'ojt';
+  v_role     public.user_role := 'ojt';
   v_role_str text;
   v_org_id   uuid;
   v_org_id_str text;
 begin
   v_role_str := new.raw_user_meta_data->>'role';
   if v_role_str in ('ojt', 'supervisor', 'admin') then
-    v_role := v_role_str::user_role;
+    v_role := v_role_str::public.user_role;
   end if;
 
   v_org_id_str := new.raw_user_meta_data->>'org_id';
   if v_org_id_str is not null and v_org_id_str != '' then
-    begin
-      v_org_id := v_org_id_str::uuid;
-    exception when others then
-      v_org_id := null;
-    end;
+    v_org_id := v_org_id_str::uuid;
   end if;
 
   insert into profiles (id, full_name, email, role, org_id)
@@ -510,12 +507,8 @@ begin
       updated_at = now();
 
   return new;
-exception when others then
-  -- Never let a trigger failure block auth user creation
-  raise warning 'handle_new_user failed for %: %', new.id, sqlerrm;
-  return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
