@@ -1,25 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Box, Card, CardContent, TextField, Button, Typography,
-  Alert, InputAdornment, IconButton, CircularProgress, Divider,
-} from '@mui/material';
-import {
-  Email as EmailIcon,
-  Lock as LockIcon,
-  Visibility,
-  VisibilityOff,
-  AccessTime as ClockIcon,
-} from '@mui/icons-material';
+import { Box, Alert, Stack, Typography } from '@mui/material';
+import GoogleIcon from '@mui/icons-material/Google';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+import AuthPageShell from './AuthPageShell';
+import AuthCard from './AuthCard';
+import SocialButton from './SocialButton';
+import AuthDivider from './AuthDivider';
+import InputField from './InputField';
+import PasswordField from './PasswordField';
+import PrimaryButton from './PrimaryButton';
+import AuthFooter from './AuthFooter';
+
+// Integrated with wider (540px) layout to match RegisterForm and improve balance
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -58,171 +58,80 @@ export default function LoginForm() {
     setLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  };
+
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
-        p: 2,
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: 420 }}>
-        {/* Logo */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 64,
-              height: 64,
-              bgcolor: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: 3,
-              mb: 2,
-            }}
-          >
-            <ClockIcon sx={{ fontSize: 36, color: '#fff' }} />
+    <AuthPageShell>
+      <AuthCard title="Welcome back" subtitle="Sign in to continue to Nexus.">
+        {registered && (
+          <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+            Account created successfully! Please sign in.
+          </Alert>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Stack spacing={1.5} sx={{ mb: 1 }}>
+          <SocialButton icon={<GoogleIcon />} onClick={handleGoogleSignIn}>
+            Continue with Google
+          </SocialButton>
+          {/* Add more providers here, e.g.:
+              <SocialButton icon={<GitHubIcon />} onClick={handleGitHubSignIn}>
+                Continue with GitHub
+              </SocialButton> */}
+        </Stack>
+
+        <AuthDivider label="Or continue with email" />
+
+        <Box component="form" onSubmit={handleLogin}>
+          <InputField
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <PasswordField
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            sx={{ mb: 1 }}
+          />
+
+          <Box sx={{ textAlign: 'right', mb: 3 }}>
+            <Link
+              href="/forgot-password"
+              style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              Forgot password?
+            </Link>
           </Box>
-          <Typography variant="h4" fontWeight={800} color="#fff">
-            OJT Tracker
-          </Typography>
-          <Typography variant="body2" color="rgba(255,255,255,0.7)" mt={0.5}>
-            On-the-Job Training Management System
-          </Typography>
+
+          <PrimaryButton loading={loading}>Sign In</PrimaryButton>
         </Box>
 
-        <Card
-          sx={{
-            borderRadius: 3,
-            boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
-          }}
+        <AuthFooter promptText="Don't have an account?" linkText="Create one" href="/register" />
+
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          textAlign="center"
+          mt={3}
         >
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" fontWeight={700} mb={0.5}>
-              Welcome back
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={3}>
-              Sign in to your account to continue
-            </Typography>
-
-            {registered && (
-              <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
-                Account created successfully! Please sign in.
-              </Alert>
-            )}
-
-            {error && (
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <form onSubmit={handleLogin}>
-              <TextField
-                fullWidth
-                label="Email Address"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                sx={{ mb: 2 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              <TextField
-                fullWidth
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                sx={{ py: 1.5, fontSize: 16 }}
-              >
-                {loading ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-
-            <Box sx={{ textAlign: 'center', mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                New to OJT Tracker?{' '}
-                <Link
-                  href="/register"
-                  style={{ color: '#4338ca', fontWeight: 600, textDecoration: 'none' }}
-                >
-                  Create or Join an Organization
-                </Link>
-              </Typography>
-            </Box>
-
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Need help? Contact your System Administrator
-              </Typography>
-            </Divider>
-
-            <Box
-              sx={{
-                bgcolor: '#f8fafc',
-                borderRadius: 2,
-                p: 2,
-                border: '1px solid #e2e8f0',
-              }}
-            >
-              <Typography variant="caption" color="text.secondary" display="block" mb={1} fontWeight={600}>
-                Account access is provided by your supervisor or admin.
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                If you&apos;re an OJT, your login credentials were given to you during onboarding.
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Typography variant="caption" color="rgba(255,255,255,0.5)" textAlign="center" display="block" mt={3}>
-          © {new Date().getFullYear()} OJT Tracker System. All rights reserved.
+          © {new Date().getFullYear()} Nexus. All rights reserved.
         </Typography>
-      </Box>
-    </Box>
+      </AuthCard>
+    </AuthPageShell>
   );
 }
