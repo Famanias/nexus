@@ -21,6 +21,13 @@ const SUPABASE_SERVICE = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').length > 
 export async function createClient() {
   const cookieStore = await cookies();
 
+  if (SUPABASE_URL === PLACEHOLDER_URL || SUPABASE_ANON === PLACEHOLDER_KEY) {
+    console.error(
+      '❌ [Supabase Server Client] Environment variables are missing or invalid! ' +
+      'Using placeholder URL/Key. Please check your .env.local file.'
+    );
+  }
+
   return createServerClient(
     SUPABASE_URL,
     SUPABASE_ANON,
@@ -45,6 +52,14 @@ export async function createClient() {
 
 export async function createAdminClient() {
   const cookieStore = await cookies();
+
+  if (SUPABASE_URL === PLACEHOLDER_URL || SUPABASE_SERVICE === PLACEHOLDER_KEY) {
+    console.error(
+      '❌ [Supabase Server Admin Client] Environment variables are missing or invalid! ' +
+      'Using placeholder URL/Key. Please check your .env.local file.'
+    );
+  }
+
   return createServerClient(
     SUPABASE_URL,
     SUPABASE_SERVICE,

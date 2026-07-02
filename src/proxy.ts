@@ -15,6 +15,13 @@ export async function proxy(request: NextRequest) {
   const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
   const supabaseKey = rawKey.length > 20 ? rawKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
 
+  if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseKey === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder') {
+    console.error(
+      '❌ [Supabase Proxy Middleware] Environment variables are missing or invalid! ' +
+      'Using placeholder URL/Key. Please check your .env.local file.'
+    );
+  }
+
   const supabase = createServerClient(
     supabaseUrl,
     supabaseKey,
