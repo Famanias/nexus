@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
+  // Skip auth/session work for Next.js link-prefetch requests
+  if (request.headers.get('Next-Router-Prefetch')) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,38 +47,49 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  console.log("MIDDLEWARE");
+  console.log({
+    pathname: request.nextUrl.pathname,
+    user: user?.id,
+    cookies: request.cookies.getAll().map(c => c.name),
+  });
 
-  // Role is stored in user_metadata at creation — no extra DB round trip needed
+  const { pathname } = request.nextUrl;
   const role: string = (user?.user_metadata?.role as string) ?? 'ojt';
 
-  // Public routes (unauthenticated access allowed)
+  // Helper: build a redirect response while preserving any refreshed auth cookies
+  const redirectWithCookies = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
+  };
+
   const publicRoutes = ['/', '/login', '/register', '/docs', '/privacy', '/terms', '/contact'];
   if (publicRoutes.includes(pathname)) {
     if (user && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
-      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url));
+      return redirectWithCookies(new URL(`/dashboard/${role}`, request.url));
     }
     return supabaseResponse;
   }
 
-  // Protected routes
   if (!user) {
-    // Allow unauthenticated API calls needed by the register flow
     if (pathname.startsWith('/api/organizations')) {
       return supabaseResponse;
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return redirectWithCookies(new URL('/login', request.url));
   }
 
   if (pathname.startsWith('/dashboard/admin') && role !== 'admin') {
-    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url));
+    return redirectWithCookies(new URL(`/dashboard/${role}`, request.url));
   }
 
   if (
     pathname.startsWith('/dashboard/supervisor') &&
     !['admin', 'supervisor'].includes(role)
   ) {
-    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url));
+    return redirectWithCookies(new URL(`/dashboard/${role}`, request.url));
   }
 
   return supabaseResponse;
@@ -81,6 +97,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

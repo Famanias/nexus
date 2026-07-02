@@ -8,6 +8,10 @@ export const dynamic = 'force-dynamic';
 export default async function OJTPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  console.log("OJT PAGE");
+  console.log(user?.id);
+
   const userId = user!.id;
   const today = format(new Date(), 'yyyy-MM-dd');
   const month = format(new Date(), 'yyyy-MM');

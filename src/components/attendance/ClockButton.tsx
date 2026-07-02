@@ -32,13 +32,16 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const supabase = createClient();
 
   const isClockedIn = !!todayRecord?.clock_in && !todayRecord?.clock_out;
 
   // Update clock every second
   useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -183,10 +186,10 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         }}
       >
         <Typography variant="h2" fontWeight={800} color="#fff" letterSpacing={2}>
-          {format(currentTime, 'HH:mm:ss')}
+          {mounted && currentTime ? format(currentTime, 'HH:mm:ss') : '--:--:--'}
         </Typography>
         <Typography variant="body1" color="rgba(255,255,255,0.7)">
-          {format(currentTime, 'EEEE, MMMM dd, yyyy')}
+          {mounted && currentTime ? format(currentTime, 'EEEE, MMMM dd, yyyy') : 'Loading...'}
         </Typography>
         {isClockedIn && (
           <Chip
