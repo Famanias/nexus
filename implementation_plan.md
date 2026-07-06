@@ -1,477 +1,369 @@
+Implementation Plan: Configurable GPS/Location Verification
 Goal
 
-Transform the Kanban board from:
+Implement a configurable attendance verification system that allows an organization administrator to enable or disable GPS/location verification for Clock In and Clock Out.
 
-To-do
-Doing
-Done
+When enabled, the existing GPS validation flow remains unchanged.
 
-into
+When disabled, users can clock in and clock out without granting location permission or being within the configured radius.
 
-Backlog
-Ideas
-Ready
-To-do
-In Progress
-Blocked
-Code Review
-Testing
-Done
-Archived
+Phase 1 — Database
+Objective
 
-where admins/supervisors can create, edit, delete, and reorder columns.
+Extend site_settings to store whether location verification is required.
 
-Phase 1 — Remove Hardcoded Columns
+Tasks
+Create a migration adding a new boolean column:
+require_location_verification BOOLEAN NOT NULL DEFAULT TRUE
+Ensure existing organizations default to enabled so current behavior is preserved.
+Expected Result
 
-Currently, somewhere in the frontend, there is likely something similar to:
+Each organization now has its own configurable GPS requirement.
 
-const columns = [
-    "To-do",
-    "Doing",
-    "Done"
-]
+Phase 2 — Types
+Objective
 
-or
+Expose the new field throughout the application.
 
-<Column title="To-do" />
-<Column title="Doing" />
-<Column title="Done" />
+Tasks
 
-Everything should instead be driven from the database.
+Update every shared type that represents Site Settings.
 
-The board should render:
+Examples:
 
-GET columns
+types/index.ts
+DTOs
+API response types
+Server action types
 
-↓
+Add:
 
-ORDER BY position
+require_location_verification: boolean;
+Expected Result
 
-↓
+The frontend and backend can safely access the new setting.
 
-Render dynamically
+Phase 3 — Server Actions
+Objective
 
-There should never again be hardcoded columns in the UI.
+Allow the new setting to be saved and retrieved.
 
-Phase 2 — Add "Create Column"
+Tasks
 
-Add a button at the end of the Kanban board.
+Update:
 
-+ Add Column
+saveSiteSettings()
 
-Clicking it opens a small modal.
+Include:
 
-Example
+require_location_verification
 
----------------------
-Create Column
+Update validation to ensure the value is a boolean.
 
-Title
+Update the Supabase update statement.
 
-[____________]
+Expected Result
 
-Color
+Saving Settings now also persists GPS verification preferences.
 
-🟣 Purple
+Phase 4 — Settings UI
+Objective
 
-[Cancel] [Create]
----------------------
+Allow administrators to control attendance verification.
 
-Only title should be required.
+4.1 Create a new Attendance Verification Card
 
-Color can default to your existing purple.
+Place this above the Office Location section.
 
-Phase 3 — Determine New Position
+Contents:
 
-When creating a column,
+Attendance Verification
 
-don't ask the user where to place it.
+Require users to be within the office location
 
-Simply append it.
+[ Switch ]
 
-Example
+Description:
 
-Current
+When disabled, users may clock in and clock out without GPS verification.
+4.2 Update Form State
 
-0 To-do
+Extend the existing form.
 
-1 Doing
-
-2 Done
-
-New
-
-Backlog
-
-Database
-
-Backlog
-
-position = 3
-
-Simply
-
-SELECT MAX(position)
-
-+1
-
-No reordering needed.
-
-Phase 4 — API
-
-Create one endpoint
-
-POST
-
-/api/kanban/columns
-
-Payload
+Current:
 
 {
-    "title":"Testing",
-    "color":"#3b82f6"
+    site_name,
+    latitude,
+    longitude,
+    radius_meters,
+    address
 }
 
-Backend
-
-find highest position
-
-↓
-
-insert column
-
-↓
-
-return new column
-
-The frontend immediately appends it.
-
-Phase 5 — Optimistic UI
-
-Don't wait.
-
-Flow
-
-Create
-
-↓
-
-Temporary column appears
-
-↓
-
-API request
-
-↓
-
-Replace temp ID
-
-↓
-
-Done
-
-The board should feel instant.
-
-Phase 6 — Editing Columns
-
-Allow clicking
-
-⋮
-
-on every column.
-
-Menu
-
-Rename
-
-Change Color
-
-Delete
-
-Rename modal
-
-Title
-
-[In Progress]
-
-Save
-
-Simple PATCH request.
-
-Phase 7 — Delete Column
-
-Deleting is the only complex part.
-
-Never allow deleting if tasks exist without asking.
-
-Instead show
-
-Delete "Testing"
-
-This column has
-
-15 tasks.
-
-Move them to
-
-▼ Done
-
-[Delete]
-
-or
-
-Archive all tasks
-
-or
-
-Cancel
-
-Never silently delete tasks.
-
-Phase 8 — Delete API
-DELETE
-
-/api/kanban/columns/:id
-
-Payload
+New:
 
 {
-    "moveTasksTo":"done-column-id"
+    site_name,
+    latitude,
+    longitude,
+    radius_meters,
+    address,
+    require_location_verification
 }
+4.3 Update Initial Values
 
-Backend
+Populate the switch using
 
-move tasks
+initialSettings.require_location_verification
+4.4 Update Save Logic
 
-↓
+Include the new property when saving.
 
-delete column
+Expected Result
 
-↓
+Administrators can enable or disable GPS verification from Settings.
 
-recalculate positions
+Phase 5 — Improve the Settings Experience
+Objective
 
-↓
+Prevent administrators from editing settings that are currently inactive.
 
-return success
-Phase 9 — Empty Columns
+Disable Office Location
 
-Support empty columns.
+When GPS verification is OFF:
 
-Example
+Latitude
+Longitude
+Address
+Current Location button
+Google Maps Preview
 
-Testing
+should appear disabled.
 
------------------
+Disable Verification Radius
 
-Drop tasks here
+Disable:
 
-No placeholder tasks.
+Radius field
+Radius chips
+Show Contextual Alert
 
-Phase 10 — Maximum Columns
+Display:
 
-Don't limit it.
+GPS verification is currently disabled. Office location and radius settings are ignored until GPS verification is enabled again.
 
-Allow
+Expected Result
 
-4
+The UI clearly reflects the active attendance verification mode.
 
-8
+Phase 6 — Attendance Flow
+Objective
 
-20
+Skip GPS entirely when it isn't required.
 
-50
+Current Flow
 
-The board should simply become horizontally scrollable.
-
-Phase 11 — Horizontal Scrolling
-
-Instead of wrapping,
-
-use
-
--------------------------------------------------------------
-
-To-do
-
-Doing
-
-Review
-
-Testing
-
-Done
-
-+ Add Column
-
--------------------------------------------------------------
-
-Scrollable horizontally.
-
-This is the standard Kanban experience.
-
-Phase 12 — Column Width
-
-Give every column a fixed width.
-
-Example
-
-320px
-
-instead of
-
-width: auto
-
-Otherwise the layout constantly shifts.
-
-Phase 13 — Default Columns
-
-When a new organization is created,
-
-instead of hardcoding
-
-To-do
-
-Doing
-
-Done
-
-inside the frontend,
-
-the backend should create them.
-
-Organization Created
+Clock In
 
 ↓
 
-Insert
+Request GPS
 
-To-do
+↓
 
-Doing
+Calculate Distance
 
-Done
+↓
 
-with
+Validate Radius
 
-position
+↓
 
-0
+Save Attendance
 
-1
+New Flow
 
-2
+Clock In
 
-That already aligns with how your organization setup currently works.
+↓
 
-Phase 14 — Drag-and-Drop Integration
+Load Site Settings
 
-Since columns already have
+↓
 
-position
+Is GPS Required?
 
-the new columns automatically participate in drag-and-drop.
+YES
+↓
 
-Example
+Request GPS
 
-Before
+↓
 
-To-do
+Calculate Distance
 
-Doing
+↓
 
-Done
+Validate Radius
 
-Testing
+↓
 
-Drag
+Save Attendance
 
-Testing
 
-between
+NO
 
-Doing
+↓
 
-Done
+Skip GPS
 
+↓
+
+Save Attendance
+Expected Result
+
+Users are never asked for location permission when GPS verification is disabled.
+
+Phase 7 — Attendance API
+Objective
+
+Update backend validation.
+
+Tasks
+
+Before any location validation:
+
+Retrieve
+
+site_settings.require_location_verification
+
+If
+
+false
+
+Immediately continue with attendance processing.
+
+Skip:
+
+Location validation
+Distance calculation
+Radius comparison
+Expected Result
+
+The backend supports both verification modes.
+
+Phase 8 — Attendance Data
+Objective
+
+Handle GPS-disabled attendance records.
+
+When GPS is disabled:
+
+Store
+
+clock_in_latitude = NULL
+
+clock_in_longitude = NULL
+
+clock_in_distance_meters = NULL
+
+clock_out_latitude = NULL
+
+clock_out_longitude = NULL
+
+clock_out_distance_meters = NULL
+
+No schema changes are required.
+
+Phase 9 — Attendance History
+Objective
+
+Improve clarity when GPS is disabled.
+
+Instead of displaying
+
+N/A
+
+or
+
+0 m
+
+display
+
+GPS Verification Disabled
+
+or
+
+Location Not Required
+
+for those attendance records.
+
+Phase 10 — Testing
+Scenario 1
+
+GPS Enabled
+
+Expected:
+
+Browser requests location permission
+Distance calculated
+Radius enforced
+Coordinates saved
+Scenario 2
+
+GPS Disabled
+
+Expected:
+
+No browser permission prompt
+No location lookup
+Attendance succeeds
+GPS fields remain NULL
+Scenario 3
+
+Administrator Toggles Setting
+
+Expected:
+
+Save succeeds
+Reload persists switch state
+Attendance behavior changes immediately
+Scenario 4
+
+Multi-Organization
+
+Organization A
+
+GPS Enabled
+
+Organization B
+
+GPS Disabled
+
+Expected:
+
+Each organization behaves independently according to its own site_settings.
+
+Files to Modify
 Database
-
-To-do
-
-0
-
-Doing
-
-1
-
-Testing
-
-2
-
-Done
-
-3
-
-Nothing special required.
-
-Phase 15 — Permissions
-
-Only
-
-Admin
-
-Supervisor
-
-should be able to
-
-Create columns
-Rename columns
-Delete columns
-Reorder columns
-
-OJTs should only be able to view the board and interact with tasks according to your existing permissions.
-
-Phase 16 — UI Improvements
-
-Every column header should contain:
-
-Title
-
-Task Count
-
-Color Indicator
-
-⋮ Menu
-
-Example
-
-🟣
-
-Testing
-
-(14)
-
-⋮
-
-The task count updates automatically based on the tasks currently in that column.
-
-Phase 17 — Future-Proofing
-
-This implementation will make future features straightforward:
-
-✅ Unlimited custom workflows
-✅ Organization-specific Kanban boards
-✅ Drag-and-drop column ordering
-✅ Custom colors
-✅ Column icons (future)
-✅ WIP limits (future)
-✅ Collapsible columns (future)
-✅ Per-column automation (future)
-✅ Default column templates for new organizations (future)
-Recommended Implementation Order
-Replace hardcoded columns with database-driven rendering.
-Implement "Create Column" (POST /api/kanban/columns) and append new columns to the end.
-Allow renaming and color changes (PATCH /api/kanban/columns/:id).
-Implement column deletion with task reassignment or archiving safeguards.
-Integrate with the column drag-and-drop persistence by updating position values.
-Polish the UI with horizontal scrolling, fixed-width columns, task counts, and contextual menus.
+site_settings table migration
+Types
+types/index.ts
+Any shared SiteSettings interfaces
+Settings
+SettingsClient.tsx
+saveSiteSettings()
+Attendance
+Clock In API/Server Action
+Clock Out API/Server Action
+Attendance validation utilities
+GPS helper (if applicable)
+Reports (Optional UX Improvement)
+Attendance history page
+Attendance details modal
+Success Criteria
+Administrators can toggle GPS verification on or off per organization.
+Users are not prompted for location access when GPS verification is disabled.
+Existing GPS and radius validation remains unchanged when enabled.
+Office Location and Radius settings are clearly inactive when GPS verification is disabled.
+The implementation is fully compatible with your existing multi-organization architecture and requires only a single additional field in site_settings.

@@ -80,6 +80,7 @@ create table if not exists site_settings (
   longitude            numeric(10,7) not null default 120.9842,
   radius_meters        integer not null default 150,
   address              text,
+  require_location_verification boolean not null default true,
   timezone             text not null default 'UTC',
   archive_retention_days integer not null default 7,
   updated_by           uuid references profiles(id),

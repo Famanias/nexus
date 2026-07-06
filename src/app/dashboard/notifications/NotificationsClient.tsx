@@ -158,24 +158,51 @@ export default function NotificationsClient() {
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="subtitle2" fontWeight={notif.is_read ? 600 : 700}>
+                          <Typography
+                            variant="subtitle2"
+                            fontWeight={notif.is_read ? 600 : 700}
+                          >
                             {notif.title}
                           </Typography>
+
                           {!notif.is_read && (
-                            <Chip label="New" color="primary" size="small" sx={{ height: 16, fontSize: 9, fontWeight: 700 }} />
+                            <Chip
+                              label="New"
+                              color="primary"
+                              size="small"
+                              sx={{
+                                height: 16,
+                                fontSize: 9,
+                                fontWeight: 700,
+                              }}
+                            />
                           )}
                         </Box>
                       }
                       secondary={
                         <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                          <Typography variant="body2" color="text.primary">
+                          <Typography
+                            component="div"
+                            variant="body2"
+                            color="text.primary"
+                          >
                             {notif.message}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+
+                          <Typography
+                            component="div"
+                            variant="caption"
+                            color="text.secondary"
+                          >
                             {formatDate(notif.created_at)}
                           </Typography>
                         </Stack>
                       }
+                      slotProps={{
+                        secondary: {
+                          component: 'div',
+                        },
+                      }}
                     />
                   </ListItem>
                 </React.Fragment>

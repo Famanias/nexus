@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Alert, Grid, InputAdornment, CircularProgress, Divider, Chip, Tooltip, IconButton,
+  Alert, Grid, InputAdornment, CircularProgress, Divider, Chip, Tooltip, IconButton, Switch,
 } from '@mui/material';
 import {
   LocationOn as LocationIcon,
@@ -13,6 +13,7 @@ import {
   ContentCopy as CopyIcon,
   Refresh as RefreshIcon,
   Business as OrgIcon,
+  GpsFixed as GpsIcon,
 } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
 import { SiteSettings, Organization } from '@/types';
@@ -33,6 +34,7 @@ export default function SettingsClient({
     longitude: String(initialSettings.longitude),
     radius_meters: String(initialSettings.radius_meters),
     address: initialSettings.address ?? '',
+    require_location_verification: initialSettings.require_location_verification ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -54,6 +56,7 @@ export default function SettingsClient({
         longitude: String(data.longitude),
         radius_meters: String(data.radius_meters),
         address: data.address ?? '',
+        require_location_verification: data.require_location_verification ?? true,
       });
     }
   }, []);
@@ -127,6 +130,7 @@ export default function SettingsClient({
         longitude: lng,
         radius_meters: radius,
         address: form.address || null,
+        require_location_verification: form.require_location_verification,
       });
 
       if (result.error) {
@@ -209,7 +213,40 @@ export default function SettingsClient({
           </CardContent>
         </Card>
       )}
+      {/* Attendance Verification Card */}
       <Card sx={{ borderRadius: 3, mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+                <GpsIcon />
+              </Box>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>Attendance Verification</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Require users to be within the office location to clock in/out
+                </Typography>
+              </Box>
+            </Box>
+            <Switch
+              checked={form.require_location_verification}
+              onChange={(e) => setForm({ ...form, require_location_verification: e.target.checked })}
+              color="primary"
+            />
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            When disabled, users may clock in and clock out without GPS verification or granting location permission.
+          </Typography>
+        </CardContent>
+      </Card>
+
+      {!form.require_location_verification && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+          GPS verification is currently disabled. Office location and radius settings are ignored until GPS verification is enabled again.
+        </Alert>
+      )}
+
+      <Card sx={{ borderRadius: 3, mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
             <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
@@ -240,6 +277,7 @@ export default function SettingsClient({
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 multiline
                 rows={2}
+                disabled={!form.require_location_verification}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -249,6 +287,7 @@ export default function SettingsClient({
                 value={form.latitude}
                 onChange={(e) => setForm({ ...form, latitude: e.target.value })}
                 placeholder="e.g. 14.5995124"
+                disabled={!form.require_location_verification}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">N</InputAdornment>,
                 }}
@@ -261,6 +300,7 @@ export default function SettingsClient({
                 value={form.longitude}
                 onChange={(e) => setForm({ ...form, longitude: e.target.value })}
                 placeholder="e.g. 120.9842195"
+                disabled={!form.require_location_verification}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">E</InputAdornment>,
                 }}
@@ -272,7 +312,7 @@ export default function SettingsClient({
                   variant="outlined"
                   startIcon={gettingLocation ? <CircularProgress size={16} /> : <LocationIcon />}
                   onClick={useCurrentLocation}
-                  disabled={gettingLocation}
+                  disabled={gettingLocation || !form.require_location_verification}
                 >
                   Use My Current Location
                 </Button>
@@ -283,6 +323,7 @@ export default function SettingsClient({
                     href={mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    disabled={!form.require_location_verification}
                   >
                     Preview on Google Maps
                   </Button>
@@ -294,7 +335,7 @@ export default function SettingsClient({
       </Card>
 
       {/* Radius Card */}
-      <Card sx={{ borderRadius: 3, mb: 3 }}>
+      <Card sx={{ borderRadius: 3, mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
             <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#f59e0b20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
@@ -316,6 +357,7 @@ export default function SettingsClient({
                 type="number"
                 value={form.radius_meters}
                 onChange={(e) => setForm({ ...form, radius_meters: e.target.value })}
+                disabled={!form.require_location_verification}
                 InputProps={{
                   endAdornment: <InputAdornment position="end">meters</InputAdornment>,
                   inputProps: { min: 50, max: 5000 },
@@ -328,10 +370,15 @@ export default function SettingsClient({
                   <Chip
                     key={r}
                     label={`${r}m`}
-                    clickable
+                    clickable={form.require_location_verification}
+                    disabled={!form.require_location_verification}
                     variant={form.radius_meters === String(r) ? 'filled' : 'outlined'}
                     color={form.radius_meters === String(r) ? 'primary' : 'default'}
-                    onClick={() => setForm({ ...form, radius_meters: String(r) })}
+                    onClick={() => {
+                      if (form.require_location_verification) {
+                        setForm({ ...form, radius_meters: String(r) });
+                      }
+                    }}
                   />
                 ))}
               </Box>
