@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createOrganization, joinOrganization } from '@/lib/services/organization';
+import { validateInvitation, acceptInvitation } from '@/lib/services/invitation';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,11 +13,20 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, orgName, inviteCode, fullName, email, password } = body;
+    const { action, orgName, inviteCode, fullName, email, password, inviteToken } = body;
 
-    if (!fullName?.trim() || !email?.trim() || !password) {
+    // Only 'create' and 'join' require an email up front. 'accept_invite'
+    // derives the email from the invitation itself, so it must not be
+    // required here.
+    const requiresEmail = action === 'create' || action === 'join';
+
+    if (!fullName?.trim() || !password || (requiresEmail && !email?.trim())) {
       return NextResponse.json(
-        { error: 'Full name, email, and password are required.' },
+        {
+          error: requiresEmail
+            ? 'Full name, email, and password are required.'
+            : 'Full name and password are required.',
+        },
         { status: 400 }
       );
     }
@@ -93,6 +103,41 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ success: true, role: 'ojt' });
+    } else if (action === 'accept_invite') {
+      if (!inviteToken) {
+        return NextResponse.json({ error: 'Invite token is required.' }, { status: 400 });
+      }
+
+      const validation = await validateInvitation(supabaseAdmin, inviteToken);
+      if (!validation.valid || !validation.invitation) {
+        return NextResponse.json({ error: validation.error ?? 'Invalid invitation.' }, { status: 400 });
+      }
+
+      const invite = validation.invitation;
+
+      // Create the auth user with the invitation's email (ignore email from body for security)
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: invite.email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName.trim(), role: invite.role, org_id: invite.organization_id },
+      });
+
+      if (authError) {
+        return NextResponse.json({ error: authError.message }, { status: 400 });
+      }
+
+      const userId = authData.user.id;
+
+      try {
+        await acceptInvitation(supabaseAdmin, inviteToken, userId);
+      } catch (err: any) {
+        // Clean up the auth user if accept fails
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, role: invite.role });
     } else {
       return NextResponse.json({ error: 'Invalid action.' }, { status: 400 });
     }

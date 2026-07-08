@@ -36,6 +36,7 @@ export interface SiteSettings {
   longitude: number;
   radius_meters: number;
   address?: string;
+  require_location_verification: boolean;
   timezone?: string;
   archive_retention_days?: number;
   updated_by?: string;
@@ -136,3 +137,32 @@ export interface LocationState {
   error: string | null;
   loading: boolean;
 }
+
+export interface Invitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: UserRole;
+  invited_by?: string;
+  token: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+  // joined
+  organization?: Organization;
+  invited_by_profile?: Profile;
+}
+
+export interface Notification {
+  id: string;
+  org_id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+

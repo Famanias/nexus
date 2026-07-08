@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer, Box, List, ListItem, ListItemButton, ListItemIcon,
   ListItemText, Typography, Avatar, Divider, IconButton, Tooltip,
-  Chip,
+  Chip, Badge,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -16,6 +16,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   BarChart as ReportIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ojt', 'supervisor', 'admin'] },
   { label: 'Attendance', icon: <ClockIcon />, path: '/dashboard/attendance', roles: ['ojt', 'supervisor', 'admin'] },
   { label: 'Kanban Board', icon: <KanbanIcon />, path: '/dashboard/kanban', roles: ['ojt', 'supervisor', 'admin'] },
+  { label: 'Notifications', icon: <NotificationsIcon />, path: '/dashboard/notifications', roles: ['ojt', 'supervisor', 'admin'] },
   { label: 'Reports', icon: <ReportIcon />, path: '/dashboard/reports', roles: ['supervisor', 'admin'] },
   { label: 'Users', icon: <PeopleIcon />, path: '/dashboard/admin/users', roles: ['admin'] },
   { label: 'Site Settings', icon: <SettingsIcon />, path: '/dashboard/admin/settings', roles: ['admin'] },
@@ -45,10 +47,36 @@ const navItems: NavItem[] = [
 
 export default function Sidebar({ profile }: { profile: Profile }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
   const { organization } = useAuth();
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const notifications = await res.json();
+        const unread = notifications.filter((n: any) => !n.is_read).length;
+        setUnreadCount(unread);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Refresh count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listen to path changes to refresh unread count immediately
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [pathname]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -198,16 +226,35 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                     color: isActive(item.path) ? '#fff' : '#a1a1aa',
                   }}
                 >
-                  {item.icon}
+                  {item.label === 'Notifications' && unreadCount > 0 ? (
+                    <Badge badgeContent={unreadCount} color="error" max={99}>
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
                 </ListItemIcon>
                 {!collapsed && (
                   <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{
-                      fontSize: 14,
-                      fontWeight: isActive(item.path) ? 600 : 400,
-                      color: isActive(item.path) ? '#fff' : '#a1a1aa',
-                    }}
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography
+                          fontSize={14}
+                          fontWeight={isActive(item.path) ? 600 : 400}
+                          color={isActive(item.path) ? '#fff' : '#a1a1aa'}
+                        >
+                          {item.label}
+                        </Typography>
+                        {item.label === 'Notifications' && unreadCount > 0 && (
+                          <Chip
+                            label={unreadCount}
+                            color="error"
+                            size="small"
+                            sx={{ height: 18, fontSize: 10, fontWeight: 700 }}
+                          />
+                        )}
+                      </Box>
+                    }
                   />
                 )}
               </ListItemButton>

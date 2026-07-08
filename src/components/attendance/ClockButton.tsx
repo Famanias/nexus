@@ -62,32 +62,43 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
     setError('');
     setSuccess('');
 
-    // Get current location
-    const loc = await getLocation();
+    const isLocationRequired = siteSettings?.require_location_verification ?? true;
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let distance: number | null = null;
 
-    if (loc.error || loc.latitude === null || loc.longitude === null) {
-      setError(loc.error ?? 'Could not retrieve your location. Please enable GPS.');
-      setLoading(false);
-      return;
-    }
+    if (isLocationRequired) {
+      // Get current location
+      const loc = await getLocation();
 
-    // Verify location for OJT
-    if (siteSettings) {
-      const { allowed, distance } = isWithinRadius(
-        loc.latitude,
-        loc.longitude,
-        siteSettings.latitude,
-        siteSettings.longitude,
-        siteSettings.radius_meters
-      );
-
-      if (!allowed) {
-        setError(
-          `You are ${Math.round(distance)}m away from the office. ` +
-          `You must be within ${siteSettings.radius_meters}m to clock in/out.`
-        );
+      if (loc.error || loc.latitude === null || loc.longitude === null) {
+        setError(loc.error ?? 'Could not retrieve your location. Please enable GPS.');
         setLoading(false);
         return;
+      }
+
+      lat = loc.latitude;
+      lng = loc.longitude;
+
+      // Verify location for OJT
+      if (siteSettings) {
+        const { allowed, distance: calculatedDistance } = isWithinRadius(
+          lat,
+          lng,
+          siteSettings.latitude,
+          siteSettings.longitude,
+          siteSettings.radius_meters
+        );
+
+        if (!allowed) {
+          setError(
+            `You are ${Math.round(calculatedDistance)}m away from the office. ` +
+            `You must be within ${siteSettings.radius_meters}m to clock in/out.`
+          );
+          setLoading(false);
+          return;
+        }
+        distance = Math.round(calculatedDistance);
       }
     }
 
@@ -105,17 +116,9 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
       const { error: insertError } = await supabase.from('attendance').insert({
         user_id: userId,
         clock_in: new Date().toISOString(),
-        clock_in_latitude: loc.latitude,
-        clock_in_longitude: loc.longitude,
-        clock_in_distance_meters: siteSettings
-          ? Math.round(
-              isWithinRadius(
-                loc.latitude, loc.longitude,
-                siteSettings.latitude, siteSettings.longitude,
-                siteSettings.radius_meters
-              ).distance
-            )
-          : null,
+        clock_in_latitude: lat,
+        clock_in_longitude: lng,
+        clock_in_distance_meters: distance,
         date: today,
       });
 
@@ -127,16 +130,6 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
       }
     } else {
       // CLOCK OUT
-      const distance = siteSettings
-        ? Math.round(
-            isWithinRadius(
-              loc.latitude, loc.longitude,
-              siteSettings.latitude, siteSettings.longitude,
-              siteSettings.radius_meters
-            ).distance
-          )
-        : null;
-
       const clockOut = new Date();
       const clockIn = new Date(todayRecord!.clock_in!);
       const totalHours = (clockOut.getTime() - clockIn.getTime()) / 3600000;
@@ -145,8 +138,8 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         .from('attendance')
         .update({
           clock_out: clockOut.toISOString(),
-          clock_out_latitude: loc.latitude,
-          clock_out_longitude: loc.longitude,
+          clock_out_latitude: lat,
+          clock_out_longitude: lng,
           clock_out_distance_meters: distance,
           total_hours: totalHours,
         })
@@ -251,16 +244,28 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         {/* Location chip */}
         {siteSettings && (
           <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Chip
-              icon={locStatus.icon}
-              label={locStatus.label}
-              color={locStatus.color}
-              size="small"
-              variant="outlined"
-            />
-            <Typography variant="caption" color="text.secondary">
-              Required within {siteSettings.radius_meters}m of {siteSettings.site_name}
-            </Typography>
+            {siteSettings.require_location_verification ? (
+              <>
+                <Chip
+                  icon={locStatus.icon}
+                  label={locStatus.label}
+                  color={locStatus.color}
+                  size="small"
+                  variant="outlined"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Required within {siteSettings.radius_meters}m of {siteSettings.site_name}
+                </Typography>
+              </>
+            ) : (
+              <Chip
+                icon={<LocationIcon />}
+                label="Location Not Required"
+                color="success"
+                size="small"
+                variant="outlined"
+              />
+            )}
           </Box>
         )}
 

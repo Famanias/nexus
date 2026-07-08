@@ -1,267 +1,369 @@
-Implementation Plan - Google OAuth Authentication with Supabase
+Implementation Plan: Configurable GPS/Location Verification
+Goal
 
-This plan outlines the implementation of Google OAuth authentication using Supabase Auth in the OJT Tracker application. It preserves the existing email/password authentication flow while seamlessly handling OAuth login, automatic profile provisioning, and multi-tenant organization onboarding.
+Implement a configurable attendance verification system that allows an organization administrator to enable or disable GPS/location verification for Clock In and Clock Out.
 
-The implementation follows a clear separation of responsibilities:
+When enabled, the existing GPS validation flow remains unchanged.
 
-Supabase Auth authenticates the user.
-Database triggers provision the user profile.
-OAuth callback restores the authenticated session and routes the user appropriately.
-Onboarding flow handles organization creation or joining.
-Shared service functions contain all organization business logic to avoid code duplication.
-User Review Required
+When disabled, users can clock in and clock out without granting location permission or being within the configured radius.
 
-[!IMPORTANT]
+Phase 1 — Database
+Objective
 
-1. Update the handle_new_user() Database Trigger
+Extend site_settings to store whether location verification is required.
 
-The existing handle_new_user() trigger currently overwrites fields such as role and org_id whenever an OAuth login occurs because Google does not provide those values.
+Tasks
+Create a migration adding a new boolean column:
+require_location_verification BOOLEAN NOT NULL DEFAULT TRUE
+Ensure existing organizations default to enabled so current behavior is preserved.
+Expected Result
 
-Update the trigger so that it:
+Each organization now has its own configurable GPS requirement.
 
-Creates a profile only if one does not already exist.
-Updates only safe profile fields (full_name, email, avatar_url) on subsequent logins.
-Preserves:
-role
-org_id
-organization membership
-permissions
-Populate avatar_url using either:
-avatar_url
-picture
+Phase 2 — Types
+Objective
 
-Create a proper Supabase SQL migration instead of modifying production SQL manually.
+Expose the new field throughout the application.
 
-2. Introduce an Onboarding Flow
+Tasks
 
-Because Nexus is multi-tenant, authenticated users must belong to an organization before accessing the dashboard.
+Update every shared type that represents Site Settings.
 
-Users who authenticate with Google but have no associated organization should be redirected to /onboarding, where they can:
+Examples:
 
-Create an organization
-Join an organization using an invite code
+types/index.ts
+DTOs
+API response types
+Server action types
 
-Business operations such as organization creation and joining should not occur inside the OAuth callback.
+Add:
 
-3. Activate Middleware
+require_location_verification: boolean;
+Expected Result
 
-The current authentication middleware located in src/proxy.ts is not active because Next.js expects middleware.ts.
+The frontend and backend can safely access the new setting.
 
-Create src/middleware.ts that delegates to proxy.ts so that:
+Phase 3 — Server Actions
+Objective
 
-sessions restore correctly
-cookies refresh automatically
-protected routes continue functioning after OAuth login
-Proposed Changes
+Allow the new setting to be saved and retrieved.
+
+Tasks
+
+Update:
+
+saveSiteSettings()
+
+Include:
+
+require_location_verification
+
+Update validation to ensure the value is a boolean.
+
+Update the Supabase update statement.
+
+Expected Result
+
+Saving Settings now also persists GPS verification preferences.
+
+Phase 4 — Settings UI
+Objective
+
+Allow administrators to control attendance verification.
+
+4.1 Create a new Attendance Verification Card
+
+Place this above the Office Location section.
+
+Contents:
+
+Attendance Verification
+
+Require users to be within the office location
+
+[ Switch ]
+
+Description:
+
+When disabled, users may clock in and clock out without GPS verification.
+4.2 Update Form State
+
+Extend the existing form.
+
+Current:
+
+{
+    site_name,
+    latitude,
+    longitude,
+    radius_meters,
+    address
+}
+
+New:
+
+{
+    site_name,
+    latitude,
+    longitude,
+    radius_meters,
+    address,
+    require_location_verification
+}
+4.3 Update Initial Values
+
+Populate the switch using
+
+initialSettings.require_location_verification
+4.4 Update Save Logic
+
+Include the new property when saving.
+
+Expected Result
+
+Administrators can enable or disable GPS verification from Settings.
+
+Phase 5 — Improve the Settings Experience
+Objective
+
+Prevent administrators from editing settings that are currently inactive.
+
+Disable Office Location
+
+When GPS verification is OFF:
+
+Latitude
+Longitude
+Address
+Current Location button
+Google Maps Preview
+
+should appear disabled.
+
+Disable Verification Radius
+
+Disable:
+
+Radius field
+Radius chips
+Show Contextual Alert
+
+Display:
+
+GPS verification is currently disabled. Office location and radius settings are ignored until GPS verification is enabled again.
+
+Expected Result
+
+The UI clearly reflects the active attendance verification mode.
+
+Phase 6 — Attendance Flow
+Objective
+
+Skip GPS entirely when it isn't required.
+
+Current Flow
+
+Clock In
+
+↓
+
+Request GPS
+
+↓
+
+Calculate Distance
+
+↓
+
+Validate Radius
+
+↓
+
+Save Attendance
+
+New Flow
+
+Clock In
+
+↓
+
+Load Site Settings
+
+↓
+
+Is GPS Required?
+
+YES
+↓
+
+Request GPS
+
+↓
+
+Calculate Distance
+
+↓
+
+Validate Radius
+
+↓
+
+Save Attendance
+
+
+NO
+
+↓
+
+Skip GPS
+
+↓
+
+Save Attendance
+Expected Result
+
+Users are never asked for location permission when GPS verification is disabled.
+
+Phase 7 — Attendance API
+Objective
+
+Update backend validation.
+
+Tasks
+
+Before any location validation:
+
+Retrieve
+
+site_settings.require_location_verification
+
+If
+
+false
+
+Immediately continue with attendance processing.
+
+Skip:
+
+Location validation
+Distance calculation
+Radius comparison
+Expected Result
+
+The backend supports both verification modes.
+
+Phase 8 — Attendance Data
+Objective
+
+Handle GPS-disabled attendance records.
+
+When GPS is disabled:
+
+Store
+
+clock_in_latitude = NULL
+
+clock_in_longitude = NULL
+
+clock_in_distance_meters = NULL
+
+clock_out_latitude = NULL
+
+clock_out_longitude = NULL
+
+clock_out_distance_meters = NULL
+
+No schema changes are required.
+
+Phase 9 — Attendance History
+Objective
+
+Improve clarity when GPS is disabled.
+
+Instead of displaying
+
+N/A
+
+or
+
+0 m
+
+display
+
+GPS Verification Disabled
+
+or
+
+Location Not Required
+
+for those attendance records.
+
+Phase 10 — Testing
+Scenario 1
+
+GPS Enabled
+
+Expected:
+
+Browser requests location permission
+Distance calculated
+Radius enforced
+Coordinates saved
+Scenario 2
+
+GPS Disabled
+
+Expected:
+
+No browser permission prompt
+No location lookup
+Attendance succeeds
+GPS fields remain NULL
+Scenario 3
+
+Administrator Toggles Setting
+
+Expected:
+
+Save succeeds
+Reload persists switch state
+Attendance behavior changes immediately
+Scenario 4
+
+Multi-Organization
+
+Organization A
+
+GPS Enabled
+
+Organization B
+
+GPS Disabled
+
+Expected:
+
+Each organization behaves independently according to its own site_settings.
+
+Files to Modify
 Database
-[MODIFY] supabase/schema.sql
-
-Update handle_new_user():
-
-Preserve existing role
-Preserve existing org_id
-Preserve organization membership
-Populate Google avatar
-Update only non-sensitive profile fields
-
-Create a proper migration for the trigger update.
-
-The trigger should remain the single source of truth for automatic profile provisioning. The application should not duplicate profile creation logic.
-
-Shared Business Services
-[NEW OR REFACTOR]
-
-Extract organization operations into reusable service functions.
-
-Examples include:
-
-createOrganization()
-joinOrganization()
-initializeOrganization()
-generateDefaultKanbanColumns()
-generateOrganizationSettings()
-
-Both the normal registration flow and OAuth onboarding should reuse these services.
-
-Avoid duplicating organization creation logic across multiple routes.
-
-Authentication UI
-[MODIFY] LoginForm.tsx
-Add Continue with Google
-Preserve existing email/password flow
-Read the next parameter
-Pass the intended destination through OAuth
-Display OAuth errors returned from the callback
-Show loading state while redirecting
-[MODIFY] RegisterForm.tsx
-
-Keep the existing registration UI.
-
-If the user begins registration using Google:
-
-Preserve registration intent
-Preserve organization creation intent
-Preserve invite code
-
-Do not rely on URL query parameters for sensitive or editable data.
-
-Instead, use a temporary authenticated mechanism (such as OAuth state, secure cookies, or another server-controlled mechanism) whenever practical.
-
-Avoid exposing organization names or invite codes directly in browser history.
-
-OAuth Callback
-[NEW] src/app/auth/callback/route.ts
-
-The callback should remain lightweight.
-
-Responsibilities:
-
-Exchange authorization code for a Supabase session.
-Restore the authenticated user.
-Verify the authenticated profile exists.
-The database trigger should already have created it.
-If the profile is unexpectedly missing, treat it as an error rather than recreating it.
-If the profile has no org_id, redirect to /onboarding.
-Otherwise:
-redirect to the original destination (next)
-or the user's dashboard
-
-Handle:
-
-cancelled authentication
-expired codes
-invalid callbacks
-authentication failures
-
-Do not:
-
-create organizations
-join organizations
-generate Kanban boards
-generate settings
-assign roles
-
-Those belong to onboarding.
-
-Middleware
-[NEW] src/middleware.ts
-
-Delegate to proxy.ts.
-
-Ensure:
-
-session restoration
-cookie refresh
-protected routes
-authenticated redirects
-
-continue working for both email/password and OAuth users.
-
-Dashboard Protection
-[MODIFY] dashboard/layout.tsx
-
-Verify:
-
-authenticated session
-valid profile
-organization membership
-
-If org_id is null:
-
-Redirect to /onboarding.
-
-Onboarding
-[NEW] /onboarding
-
-Authenticated users without an organization should be redirected here.
-
-The page allows users to:
-
-Create Organization
-Join Organization
-
-All operations should call the shared organization service layer rather than implementing business logic directly inside the page.
-
-[NEW] api/onboarding
-
-The onboarding endpoint should:
-
-Create Organization
-Create organization
-Assign administrator role
-Initialize workspace
-Create default settings
-Generate default Kanban columns
-
-using the shared services.
-
-Join Organization
-Validate invite code
-Join organization
-Assign OJT role
-
-using the same shared services used by normal registration.
-
-[NEW] OnboardingClient.tsx
-
-Build a polished onboarding experience using the project's design system.
-
-Features:
-
-Create Organization
-Join with Invite Code
-Invite code validation
-Loading states
-Error handling
-Success feedback
-Sign Out button
-Security
-
-Follow Supabase OAuth best practices.
-
-Never trust client-supplied identity data.
-Use the authenticated Supabase session as the source of truth.
-Avoid manually storing OAuth tokens.
-Preserve existing RLS policies.
-Preserve organization permissions.
-Preserve user roles.
-Keep authentication provider-agnostic for future providers (GitHub, Microsoft, Apple).
-Verification Plan
-Automated
-Run database migration.
-Verify trigger compiles successfully.
-Run project build.
-Ensure TypeScript passes.
-Ensure middleware activates correctly.
-Manual
-Authentication
-New Google user signs in successfully.
-Existing Google user signs in successfully.
-Existing email/password user continues to work.
-Logout works correctly.
-Session restoration works correctly.
-Organization Flow
-Google user without an organization is redirected to onboarding.
-Creating an organization initializes the workspace correctly.
-Joining an organization via invite code succeeds.
-Dashboard becomes accessible immediately afterward.
-Existing Users
-
-Verify an existing email/password account can authenticate using the same Google email without:
-
-creating duplicate profiles
-losing organization membership
-losing roles
-resetting permissions
-
-If account linking behavior requires additional configuration, document and implement it according to Supabase's recommended identity-linking approach.
-
-Regression Testing
-
-Verify:
-
-Existing registration flow remains unchanged.
-Existing login flow remains unchanged.
-Existing RLS policies continue to function.
-Existing organization permissions remain intact.
-Existing dashboards behave identically for both email/password and Google-authenticated users.
+site_settings table migration
+Types
+types/index.ts
+Any shared SiteSettings interfaces
+Settings
+SettingsClient.tsx
+saveSiteSettings()
+Attendance
+Clock In API/Server Action
+Clock Out API/Server Action
+Attendance validation utilities
+GPS helper (if applicable)
+Reports (Optional UX Improvement)
+Attendance history page
+Attendance details modal
+Success Criteria
+Administrators can toggle GPS verification on or off per organization.
+Users are not prompted for location access when GPS verification is disabled.
+Existing GPS and radius validation remains unchanged when enabled.
+Office Location and Radius settings are clearly inactive when GPS verification is disabled.
+The implementation is fully compatible with your existing multi-organization architecture and requires only a single additional field in site_settings.

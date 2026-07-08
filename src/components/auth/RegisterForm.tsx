@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box, Alert, Stack, Typography, Tabs, Tab, Chip,
   InputAdornment, CircularProgress,
@@ -29,6 +29,27 @@ interface InviteVerifyResult {
   orgName?: string;
 }
 
+type StrengthLabel = '' | 'Weak' | 'Medium' | 'Strong';
+
+interface PasswordStrength {
+  label: StrengthLabel;
+  color: string;
+  score: number; // 0-3, number of criteria met
+}
+
+function getPasswordStrength(password: string): PasswordStrength {
+  if (!password) return { label: '', color: '', score: 0 };
+
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 1) return { label: 'Weak', color: '#dc2626', score };
+  if (score === 2) return { label: 'Medium', color: '#d97706', score };
+  return { label: 'Strong', color: '#16a34a', score };
+}
+
 export default function RegisterForm() {
   const [tab, setTab] = useState<0 | 1>(0); // 0 = create org, 1 = join org
   const [firstName, setFirstName] = useState('');
@@ -48,11 +69,46 @@ export default function RegisterForm() {
   const errorParam = searchParams.get('error');
   const supabase = createClient();
 
+  // Invite Token state
+  const inviteToken = searchParams.get('invite_token');
+  const [inviteTokenValid, setInviteTokenValid] = useState<boolean | null>(null);
+  const [inviteTokenDetails, setInviteTokenDetails] = useState<{ email: string; orgName: string; role: string } | null>(null);
+  const [verifyingInviteToken, setVerifyingInviteToken] = useState(false);
+
+  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
+
   React.useEffect(() => {
     if (errorParam) {
       setError(errorParam);
     }
   }, [errorParam]);
+
+  React.useEffect(() => {
+    if (!inviteToken) return;
+
+    const verifyToken = async () => {
+      setVerifyingInviteToken(true);
+      try {
+        const res = await fetch(`/api/invitations/verify?token=${encodeURIComponent(inviteToken)}`);
+        const json = await res.json();
+        if (json.valid) {
+          setInviteTokenValid(true);
+          setInviteTokenDetails(json);
+          setEmail(json.email);
+        } else {
+          setInviteTokenValid(false);
+          setError(json.error ?? 'Invalid or expired invitation link.');
+        }
+      } catch {
+        setInviteTokenValid(false);
+        setError('Failed to verify the invitation link.');
+      } finally {
+        setVerifyingInviteToken(false);
+      }
+    };
+
+    verifyToken();
+  }, [inviteToken]);
 
   const verifyInviteCode = async (code: string) => {
     const trimmed = code.trim().toUpperCase();
@@ -99,9 +155,14 @@ export default function RegisterForm() {
       )}; path=/; max-age=600; SameSite=Lax; Secure`;
     }
 
+    const redirectToUrl = new URL('/auth/callback', window.location.origin);
+    if (inviteToken) {
+      redirectToUrl.searchParams.set('next', `/invite/${inviteToken}`);
+    }
+
     const { error: oAuthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: redirectToUrl.toString() },
     });
 
     if (oAuthError) {
@@ -124,21 +185,41 @@ export default function RegisterForm() {
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (tab === 0 && !orgName.trim()) {
-      setError('Please enter an organization name.');
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number.');
       return;
     }
-    if (tab === 1 && (!inviteCode.trim() || !inviteValid?.valid)) {
-      setError('Please enter a valid invite code.');
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError('Password must contain at least one special character.');
       return;
+    }
+
+    if (inviteToken) {
+      if (!inviteTokenValid || !inviteTokenDetails) {
+        setError('Cannot register: invitation is invalid or expired.');
+        return;
+      }
+    } else {
+      if (tab === 0 && !orgName.trim()) {
+        setError('Please enter an organization name.');
+        return;
+      }
+      if (tab === 1 && (!inviteCode.trim() || !inviteValid?.valid)) {
+        setError('Please enter a valid invite code.');
+        return;
+      }
     }
 
     setLoading(true);
 
-    const payload =
-      tab === 0
-        ? { action: 'create', orgName: orgName.trim(), fullName, email, password }
-        : { action: 'join', inviteCode: inviteCode.trim().toUpperCase(), fullName, email, password };
+    let payload;
+    if (inviteToken) {
+      payload = { action: 'accept_invite', inviteToken, fullName, password };
+    } else if (tab === 0) {
+      payload = { action: 'create', orgName: orgName.trim(), fullName, email, password };
+    } else {
+      payload = { action: 'join', inviteCode: inviteCode.trim().toUpperCase(), fullName, email, password };
+    }
 
     const res = await fetch('/api/organizations', {
       method: 'POST',
@@ -154,8 +235,9 @@ export default function RegisterForm() {
     }
 
     // Sign in immediately after account creation
+    const signInEmail = (inviteToken && inviteTokenDetails) ? inviteTokenDetails.email : email;
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: signInEmail.trim(),
       password,
     });
 
@@ -182,11 +264,18 @@ export default function RegisterForm() {
           </Alert>
         )}
 
+        {verifyingInviteToken && (
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CircularProgress size={16} />
+            <Typography variant="caption">Verifying invitation details...</Typography>
+          </Box>
+        )}
+
         <Stack spacing={1.5} sx={{ mb: 1 }}>
           <SocialButton
             icon={googleLoading ? <CircularProgress size={20} color="inherit" /> : <GoogleIcon />}
             onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
+            disabled={googleLoading || loading || verifyingInviteToken}
           >
             {googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
           </SocialButton>
@@ -194,20 +283,32 @@ export default function RegisterForm() {
 
         <AuthDivider label="Or continue with email" />
 
-        {/* Organization: create vs join — required by the platform's
-            multi-tenant model, kept alongside the requested field layout */}
-        <Tabs
-          value={tab}
-          onChange={handleTabChange}
-          variant="fullWidth"
-          sx={{ mb: 2.5, borderBottom: 1, borderColor: 'divider' }}
-        >
-          <Tab label="Create Organization" sx={{ textTransform: 'none', fontWeight: 600 }} />
-          <Tab label="Join with Code" sx={{ textTransform: 'none', fontWeight: 600 }} />
-        </Tabs>
+        {inviteToken ? (
+          <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 3, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <CheckIcon color="success" />
+            <Box>
+              <Typography variant="body2" fontWeight={600} color="#166534">
+                Accepting Invitation
+              </Typography>
+              <Typography variant="caption" color="#15803d">
+                Joining <strong>{inviteTokenDetails?.orgName ?? 'loading...'}</strong> as a <strong>{inviteTokenDetails?.role.toUpperCase() ?? 'loading...'}</strong>.
+              </Typography>
+            </Box>
+          </Box>
+        ) : (
+          <Tabs
+            value={tab}
+            onChange={handleTabChange}
+            variant="fullWidth"
+            sx={{ mb: 2.5, borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Tab label="Create Organization" sx={{ textTransform: 'none', fontWeight: 600 }} />
+            <Tab label="Join with Code" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          </Tabs>
+        )}
 
         <Box component="form" onSubmit={handleSubmit}>
-          {tab === 0 && (
+          {!inviteToken && tab === 0 && (
             <InputField
               label="Organization Name"
               value={orgName}
@@ -223,7 +324,7 @@ export default function RegisterForm() {
             />
           )}
 
-          {tab === 1 && (
+          {!inviteToken && tab === 1 && (
             <>
               <InputField
                 label="Invite Code"
@@ -277,7 +378,7 @@ export default function RegisterForm() {
           )}
 
           {/* First / Last name — side-by-side on desktop */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} sx={{ mb: 2.5 }}>
             <InputField
               label="First Name"
               value={firstName}
@@ -298,6 +399,10 @@ export default function RegisterForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            sx={{ mb: 2.5 }}
+            InputProps={{
+              readOnly: !!inviteToken,
+            }}
           />
 
           <PasswordField
@@ -305,8 +410,30 @@ export default function RegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            helperText="At least 8 characters."
+            helperText="At least 8 characters, with a number and a special character."
           />
+
+          {password && (
+            <Box sx={{ mt: 1, mb: 2.5 }}>
+              <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+                {[0, 1, 2].map((i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      height: 4,
+                      flex: 1,
+                      borderRadius: 2,
+                      bgcolor: i < passwordStrength.score ? passwordStrength.color : '#e5e7eb',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                  />
+                ))}
+              </Box>
+              <Typography variant="caption" sx={{ color: passwordStrength.color, fontWeight: 600 }}>
+                {passwordStrength.label} password
+              </Typography>
+            </Box>
+          )}
 
           <PasswordField
             label="Confirm Password"

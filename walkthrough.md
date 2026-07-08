@@ -1,52 +1,34 @@
-# Walkthrough - Google OAuth Authentication with Supabase
+# Walkthrough: Configurable GPS/Location Verification
 
-Google OAuth authentication has been successfully integrated into the OJT Tracker application. The implementation adheres to a clean separation of concerns, uses secure cookie-based intent preservation for register form actions, and introduces a premium onboarding experience for users without an organization.
+We have implemented a configurable attendance verification system allowing organization administrators to enable or disable GPS/location verification for Clock In and Clock Out actions.
 
-## Changes Made
+## Summary of Changes
 
-### 1. Database & Migrations
-- **Trigger Update (`handle_new_user`):**
-  - Updated [schema.sql](file:///d:/repos/ojt-tracker/supabase/schema.sql) trigger function.
-  - Created SQL migration [20260703000000_update_handle_new_user.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260703000000_update_handle_new_user.sql) to apply the trigger updates in production.
-  - Safe fields (`full_name`, `email`, `avatar_url`) are updated on conflict, while `role` and `org_id` (organization membership) are preserved, preventing roles from resetting to `'ojt'` on subsequent Google logins.
-  - Profile `avatar_url` is now correctly mapped from Google metadata (`avatar_url` or `picture`).
+### 1. Database Schema
+- **[NEW] Migration [20260707000000_add_require_location_verification.sql](file:///D:/repos/ojt-tracker/supabase/migrations/20260707000000_add_require_location_verification.sql):** Adds `require_location_verification` boolean column to the `site_settings` table, defaulting to `true`.
+- **[MODIFY] [schema.sql](file:///D:/repos/ojt-tracker/supabase/schema.sql):** Appended the column to the default schema definition of the `site_settings` table.
 
-### 2. Business Services
-- **Extract Services:**
-  - Created [organization.ts](file:///d:/repos/ojt-tracker/src/lib/services/organization.ts) containing shared business functions for `createOrganization` and `joinOrganization`.
-  - Refactored [route.ts](file:///d:/repos/ojt-tracker/src/app/api/organizations/route.ts) to utilize these shared service functions, eliminating duplicate code.
+### 2. Types
+- **[MODIFY] [types/index.ts](file:///D:/repos/ojt-tracker/src/types/index.ts):** Updated the `SiteSettings` interface to include `require_location_verification: boolean`.
 
-### 3. Authentication UI Components
-- **LoginForm (`LoginForm.tsx`):**
-  - Added support for reading and preserving `next` query parameters.
-  - Added URL search parameter parsing inside a `useEffect` to display OAuth error messages (e.g. cancelled authentication).
-  - Added `googleLoading` indicator and loading state UI.
-- **RegisterForm (`RegisterForm.tsx`):**
-  - Added `googleLoading` state and support for displaying callback error messages.
-  - When clicking "Continue with Google" with filled-out organization creation or join details, the user's intent is stored in a secure client-side cookie `nexus_register_intent` (expires in 10 mins). This completely avoids exposing sensitive data in browser history or URL parameters.
+### 3. Server Actions
+- **[MODIFY] [actions/settings.ts](file:///D:/repos/ojt-tracker/src/actions/settings.ts):** Updated the `SiteSettingsInput` interface and `saveSiteSettings` server action to accept and update `require_location_verification` in the database.
 
-### 4. Session & Callback Handling
-- **Callback Route (`src/app/auth/callback/route.ts`):**
-  - Lightweight route handler. Exchanged code for a Supabase session.
-  - Verified user profile exists (or raises an error if unexpectedly missing).
-  - If the profile lacks an `org_id`, redirects to `/onboarding`. Otherwise, redirects to the `next` path or default role dashboard.
-  - Handles cancelled authentication ("Google sign-in was cancelled") and other callback errors.
-- **Middleware Activation (`src/middleware.ts`):**
-  - Created Next.js `middleware.ts` which forwards to the existing `src/proxy.ts` middleware. This enables proper cookie-based session restoration and protected routing.
+### 4. Settings UI & UX
+- **[MODIFY] [SettingsClient.tsx](file:///D:/repos/ojt-tracker/src/app/dashboard/admin/settings/SettingsClient.tsx):**
+  - Integrated `require_location_verification` in state management.
+  - Added a new **Attendance Verification Card** with a switch above the "Office Location" section.
+  - Added a Warning Alert when verification is disabled.
+  - Dynamically disabled "Office Address", "Latitude", "Longitude", "Use My Current Location", "Preview on Google Maps", and the radius text field/chips when verification is turned off.
 
-### 5. Onboarding Flow
-- **Dashboard Layout Redirect (`src/app/dashboard/layout.tsx`):**
-  - Added a check: if an authenticated user does not have an `org_id`, they are redirected to `/onboarding`.
-- **Onboarding Page (`src/app/onboarding/page.tsx` & `OnboardingClient.tsx`):**
-  - Renders a premium setup experience wrapped in `AuthPageShell` and `AuthCard` for visual consistency.
-  - If the `nexus_register_intent` cookie is found, it automatically executes the organization creation or join seamlessly behind a loading spinner.
-  - Manual forms allow the user to create or join an organization with asynchronous validation on invite codes, error/success feedback, and a "Sign Out" button.
-- **Onboarding API Route (`src/app/api/onboarding/route.ts`):**
-  - REST POST handler executing onboarding operations by calling the shared services.
+### 5. Attendance Flow
+- **[MODIFY] [ClockButton.tsx](file:///D:/repos/ojt-tracker/src/components/attendance/ClockButton.tsx):**
+  - Updated the clock-in/out button logic to bypass location checking and radius checks when `require_location_verification` is disabled.
+  - Inserts and updates database attendance records with `NULL` coordinates and distance when location check is skipped.
+  - Dynamically shows a green "Location Not Required" chip in place of the location coordinates and radius rules when verification is disabled.
 
 ---
 
 ## Verification Results
-
-### TypeScript Verification
-- Run type checker `npx tsc --noEmit` to verify type safety.
+- Database update executed and applied successfully.
+- Code compiles clean via `tsc --noEmit` and Turbopack builds successfully.

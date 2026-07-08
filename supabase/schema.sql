@@ -80,6 +80,7 @@ create table if not exists site_settings (
   longitude            numeric(10,7) not null default 120.9842,
   radius_meters        integer not null default 150,
   address              text,
+  require_location_verification boolean not null default true,
   timezone             text not null default 'UTC',
   archive_retention_days integer not null default 7,
   updated_by           uuid references profiles(id),
@@ -289,10 +290,10 @@ create policy "Org members can view kanban columns" on kanban_columns
   for select using (org_id = get_my_org_id());
 drop policy if exists "Supervisors/Admins can manage columns" on kanban_columns;
 drop policy if exists "Supervisors and admins can manage kanban columns" on kanban_columns;
-create policy "Supervisors and admins can manage kanban columns" on kanban_columns
+drop policy if exists "Org members can manage kanban columns" on kanban_columns;
+create policy "Org members can manage kanban columns" on kanban_columns
   for all using (
     org_id = get_my_org_id()
-    and exists (select 1 from profiles where id = auth.uid() and role in ('supervisor', 'admin'))
   );
 
 -- Kanban tasks policies
@@ -552,3 +553,241 @@ drop policy if exists "Users can update their own avatar" on storage.objects;
 create policy "Users can update their own avatar"
   on storage.objects for update to authenticated
   using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ============================================================
+-- INVITATIONS TABLE & POLICIES
+-- ============================================================
+create table if not exists invitations (
+  id uuid primary key default uuid_generate_v4(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  email text not null,
+  role user_role not null default 'ojt',
+  invited_by uuid references profiles(id) on delete set null,
+  token text unique not null,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'expired', 'revoked')),
+  expires_at timestamptz not null,
+  accepted_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- Index for single pending invitation per email per organization
+create unique index if not exists unique_pending_invitation on invitations (email, organization_id) where (status = 'pending');
+
+-- Enable RLS
+alter table invitations enable row level security;
+
+-- RLS policies:
+-- Admins can view invitations in their organization
+drop policy if exists "Admins can view invitations in their organization" on invitations;
+create policy "Admins can view invitations in their organization" on invitations
+  for select using (
+    organization_id = get_my_org_id()
+    and exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- Admins can create invitations in their organization
+drop policy if exists "Admins can create invitations in their organization" on invitations;
+create policy "Admins can create invitations in their organization" on invitations
+  for insert with check (
+    organization_id = get_my_org_id()
+    and exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- Admins can update/revoke invitations in their organization
+drop policy if exists "Admins can update invitations in their organization" on invitations;
+create policy "Admins can update invitations in their organization" on invitations
+  for update using (
+    organization_id = get_my_org_id()
+    and exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- ============================================================
+-- NOTIFICATIONS TABLE & POLICIES
+-- ============================================================
+create table if not exists notifications (
+  id uuid primary key default uuid_generate_v4(),
+  org_id uuid not null references organizations(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text not null,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+-- Enable RLS
+alter table notifications enable row level security;
+
+-- RLS Policy: Users can view their own notifications
+drop policy if exists "Users can view their own notifications" on notifications;
+create policy "Users can view their own notifications" on notifications
+  for select using (user_id = auth.uid());
+
+-- RLS Policy: Users can update their own notifications (e.g. mark as read)
+drop policy if exists "Users can update their own notifications" on notifications;
+create policy "Users can update their own notifications" on notifications
+  for update using (user_id = auth.uid());
+
+-- RLS Policy: Allow insertion of notifications by authenticated users
+drop policy if exists "Allow insertion of notifications" on notifications;
+create policy "Allow insertion of notifications" on notifications
+  for insert with check (true);
+
+-- ============================================================
+-- KANBAN REORDER INDEXES & FUNCTIONS
+-- ============================================================
+
+-- Indexes for Kanban sorting optimization
+create index if not exists idx_kanban_columns_org_position
+on kanban_columns(org_id, position);
+
+create index if not exists idx_kanban_tasks_column_position
+on kanban_tasks(column_id, position);
+
+create index if not exists idx_kanban_tasks_org_column_position
+on kanban_tasks(org_id, column_id, position);
+
+-- RPC for reordering kanban columns in a single transaction
+create or replace function reorder_kanban_columns(payload jsonb)
+returns void as $$
+declare
+  col record;
+  user_org_id uuid;
+  user_role public.user_role;
+begin
+  -- Get caller's organization ID and role
+  select org_id, role into user_org_id, user_role from profiles where id = auth.uid();
+  
+  if user_org_id is null then
+    raise exception 'Unauthorized: user has no organization';
+  end if;
+
+  for col in select * from jsonb_to_recordset(payload) as x(id uuid, position int) loop
+    update kanban_columns
+    set position = col.position
+    where id = col.id and org_id = user_org_id;
+  end loop;
+end;
+$$ language plpgsql security definer;
+
+-- RPC for reordering kanban tasks in a single transaction
+create or replace function reorder_kanban_tasks(payload jsonb)
+returns void as $$
+declare
+  tsk record;
+  user_org_id uuid;
+  user_role public.user_role;
+  db_task record;
+  has_assignment boolean := false;
+  is_assigned boolean;
+begin
+  -- Get caller's organization ID and role
+  select org_id, role into user_org_id, user_role from profiles where id = auth.uid();
+  
+  if user_org_id is null then
+    raise exception 'Unauthorized: user has no organization';
+  end if;
+
+  -- First pass: Validate organization and permissions
+  for tsk in select * from jsonb_to_recordset(payload) as x(id uuid, column_id uuid, position int) loop
+    -- Get task details from DB
+    select org_id, column_id, assignee_id into db_task from kanban_tasks where id = tsk.id;
+    
+    if db_task.org_id is null or db_task.org_id != user_org_id then
+      raise exception 'Forbidden: task does not belong to your organization';
+    end if;
+
+    if user_role = 'ojt' then
+      -- Check if user is assigned to this specific task
+      select exists (
+        select 1 from task_assignees
+        where task_id = tsk.id and user_id = auth.uid() and status = 'accepted'
+      ) or (db_task.assignee_id = auth.uid()) into is_assigned;
+
+      if is_assigned then
+        has_assignment := true;
+      end if;
+
+      -- If task is moving to a different column, user MUST be assigned to it
+      if db_task.column_id != tsk.column_id and not is_assigned then
+        raise exception 'Forbidden: OJTs can only move tasks they are assigned to';
+      end if;
+    end if;
+  end loop;
+
+  -- OJTs must be assigned to at least one task in the reorder payload
+  if user_role = 'ojt' and not has_assignment then
+    raise exception 'Forbidden: OJTs can only reorder lists containing tasks they are assigned to';
+  end if;
+
+  -- Second pass: Perform updates
+  for tsk in select * from jsonb_to_recordset(payload) as x(id uuid, column_id uuid, position int) loop
+    update kanban_tasks
+    set column_id = tsk.column_id, position = tsk.position
+    where id = tsk.id;
+  end loop;
+end;
+$$ language plpgsql security definer;
+
+-- RPC for deleting kanban columns and reassigning/archiving tasks
+create or replace function delete_kanban_column(
+  column_to_delete uuid,
+  move_tasks_to uuid
+)
+returns void as $$
+declare
+  user_org_id uuid;
+  user_role public.user_role;
+  col record;
+  i int := 0;
+begin
+  -- Get caller's organization ID and role
+  select org_id, role into user_org_id, user_role from profiles where id = auth.uid();
+  
+  if user_org_id is null then
+    raise exception 'Unauthorized: user has no organization';
+  end if;
+
+  -- Verify column_to_delete belongs to user's org
+  if not exists (
+    select 1 from kanban_columns where id = column_to_delete and org_id = user_org_id
+  ) then
+    raise exception 'Forbidden: column not found or does not belong to your organization';
+  end if;
+
+  -- Move tasks or archive tasks
+  if move_tasks_to is not null then
+    -- Verify target column belongs to user's org
+    if not exists (
+      select 1 from kanban_columns where id = move_tasks_to and org_id = user_org_id
+    ) then
+      raise exception 'Forbidden: destination column not found or does not belong to your organization';
+    end if;
+
+    -- Update tasks column_id
+    update kanban_tasks
+    set column_id = move_tasks_to
+    where column_id = column_to_delete;
+  else
+    -- Archive all tasks in this column
+    update kanban_tasks
+    set archived_at = now(), archived_by = auth.uid()
+    where column_id = column_to_delete;
+  end if;
+
+  -- Delete the column
+  delete from kanban_columns
+  where id = column_to_delete;
+
+  -- Recalculate positions of remaining columns
+  for col in select id from kanban_columns where org_id = user_org_id order by position asc loop
+    update kanban_columns
+    set position = i
+    where id = col.id;
+    i := i + 1;
+  end loop;
+end;
+$$ language plpgsql security definer;
+
+
+

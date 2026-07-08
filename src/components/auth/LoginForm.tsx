@@ -60,7 +60,7 @@ export default function LoginForm() {
         .single();
 
       const role = profile?.role ?? 'ojt';
-      router.push(`/dashboard/${role}`);
+      router.push(next || `/dashboard/${role}`);
       router.refresh();
     }
 

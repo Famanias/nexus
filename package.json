@@ -17,6 +17,8 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/material-nextjs": "^7.3.8",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.10",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "date-fns": "^4.1.0",
@@ -24,6 +26,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",
+    "resend": "^6.17.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

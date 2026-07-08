@@ -5,7 +5,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box, Typography, CircularProgress,
 } from '@mui/material';
-import { createClient } from '@/lib/supabase/client';
 import { KanbanColumn } from '@/types';
 
 const PRESET_COLORS = [
@@ -16,7 +15,7 @@ const PRESET_COLORS = [
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (title: string, color: string) => Promise<void>;
   editingColumn: KanbanColumn | null;
   nextPosition: number;
   profileId?: string;
@@ -27,7 +26,6 @@ export default function ColumnDialog({ open, onClose, onSave, editingColumn, nex
   const [color, setColor] = useState('#6366f1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const supabase = createClient();
 
   useEffect(() => {
     if (editingColumn) {
@@ -45,21 +43,14 @@ export default function ColumnDialog({ open, onClose, onSave, editingColumn, nex
     setSaving(true);
     setError('');
 
-    if (editingColumn) {
-      const { error: updateError } = await supabase
-        .from('kanban_columns')
-        .update({ title: title.trim(), color })
-        .eq('id', editingColumn.id);
-      if (updateError) { setError(updateError.message); setSaving(false); return; }
-    } else {
-      const { error: insertError } = await supabase
-        .from('kanban_columns')
-        .insert({ title: title.trim(), color, position: nextPosition, created_by: profileId });
-      if (insertError) { setError(insertError.message); setSaving(false); return; }
+    try {
+      await onSave(title.trim(), color);
+      onClose();
+    } catch (err: any) {
+      setError(err.message ?? 'An error occurred.');
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
-    onSave();
   };
 
   return (

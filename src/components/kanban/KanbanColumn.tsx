@@ -22,6 +22,7 @@ import KanbanTaskCard from './KanbanTask';
 interface Props {
   column: KanbanColumn;
   canManage: boolean;
+  canManageColumns?: boolean;
   canAddTask?: boolean;
   isDragging?: boolean;
   currentUserId?: string;
@@ -36,7 +37,7 @@ interface Props {
 }
 
 export default function KanbanColumnComponent({
-  column, canManage, canAddTask = false, isDragging = false, currentUserId, isOjt = false,
+  column, canManage, canManageColumns = false, canAddTask = false, isDragging = false, currentUserId, isOjt = false,
   onAddTask, onEditColumn, onDeleteColumn, onEditTask, onArchiveTask, onViewTask, onVolunteer,
 }: Props) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -61,8 +62,8 @@ export default function KanbanColumnComponent({
       ref={setSortableRef}
       style={style}
       sx={{
-        width: 300,
-        minWidth: 300,
+        width: 320,
+        minWidth: 320,
         display: 'flex',
         flexDirection: 'column',
         maxHeight: 'calc(100vh - 180px)',
@@ -81,8 +82,8 @@ export default function KanbanColumnComponent({
       >
         {/* Column Header — draggable */}
         <Box
-          {...attributes}
-          {...listeners}
+          {...(canManageColumns ? attributes : {})}
+          {...(canManageColumns ? listeners : {})}
           sx={{
             px: 2,
             py: 1.5,
@@ -92,8 +93,8 @@ export default function KanbanColumnComponent({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            cursor: 'grab',
-            '&:active': { cursor: 'grabbing' },
+            cursor: canManageColumns ? 'grab' : 'default',
+            '&:active': { cursor: canManageColumns ? 'grabbing' : 'default' },
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -122,9 +123,9 @@ export default function KanbanColumnComponent({
             </Badge>
           </Box>
 
-          {canManage && (
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <Tooltip title="Add task">
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+            {(canManage || canAddTask) && (
+              <Tooltip title={canManage ? "Add task" : "Add your task"}>
                 <IconButton
                   size="small"
                   onClick={(e) => { e.stopPropagation(); onAddTask(); }}
@@ -133,25 +134,16 @@ export default function KanbanColumnComponent({
                   <AddIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
+            )}
+            {canManageColumns && (
               <IconButton
                 size="small"
                 onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }}
               >
                 <MoreIcon fontSize="small" />
               </IconButton>
-            </Box>
-          )}
-          {!canManage && canAddTask && (
-            <Tooltip title="Add your task">
-              <IconButton
-                size="small"
-                onClick={(e) => { e.stopPropagation(); onAddTask(); }}
-                sx={{ color: column.color }}
-              >
-                <AddIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
+            )}
+          </Box>
         </Box>
 
         {/* Tasks area */}

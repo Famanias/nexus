@@ -44,8 +44,8 @@ export async function GET(request: Request) {
           );
         }
 
-        // If user profile has no organization association, route them to onboarding
-        if (!profile.org_id) {
+        // If user profile has no organization association, route them to onboarding (unless they are accepting an invite)
+        if (!profile.org_id && (!next || !next.startsWith('/invite/'))) {
           return NextResponse.redirect(`${origin}/onboarding`);
         }
 

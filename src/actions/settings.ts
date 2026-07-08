@@ -9,6 +9,7 @@ export interface SiteSettingsInput {
   longitude: number;
   radius_meters: number;
   address: string | null;
+  require_location_verification: boolean;
 }
 
 export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ error?: string }> {
@@ -23,6 +24,7 @@ export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ erro
       longitude: input.longitude,
       radius_meters: input.radius_meters,
       address: input.address,
+      require_location_verification: input.require_location_verification,
       updated_by: user?.id,
     })
     .eq('id', input.id);

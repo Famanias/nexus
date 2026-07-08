@@ -66,9 +66,10 @@ export async function proxy(request: NextRequest) {
     return redirectResponse;
   };
 
+  const isInviteRoute = pathname.startsWith('/invite/');
   const publicRoutes = ['/', '/login', '/register', '/docs', '/privacy', '/terms', '/contact'];
-  if (publicRoutes.includes(pathname)) {
-    if (user && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
+  if (publicRoutes.includes(pathname) || isInviteRoute) {
+    if (user && !isInviteRoute && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
       return redirectWithCookies(new URL(`/dashboard/${role}`, request.url));
     }
     return supabaseResponse;
