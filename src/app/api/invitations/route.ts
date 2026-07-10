@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createInvitation, listInvitations } from '@/lib/services/invitation';
 import { sendInvitationEmail } from '@/lib/services/email';
+import { getSiteUrl } from '@/lib/utils/url';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,8 +83,8 @@ export async function POST(request: NextRequest) {
     });
 
     // 3. Send the email via Resend (falls back to console if no API key)
-    const origin = request.nextUrl.origin;
-    const inviteUrl = `${origin}/invite/${invitation.token}`;
+    const siteUrl = getSiteUrl(request);
+    const inviteUrl = `${siteUrl}/invite/${invitation.token}`;
     const expiresAtStr = new Date(invitation.expires_at).toLocaleString();
 
     const emailResult = await sendInvitationEmail({

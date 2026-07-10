@@ -1,369 +1,72 @@
-Implementation Plan: Configurable GPS/Location Verification
-Goal
-
-Implement a configurable attendance verification system that allows an organization administrator to enable or disable GPS/location verification for Clock In and Clock Out.
-
-When enabled, the existing GPS validation flow remains unchanged.
-
-When disabled, users can clock in and clock out without granting location permission or being within the configured radius.
-
-Phase 1 — Database
-Objective
-
-Extend site_settings to store whether location verification is required.
-
-Tasks
-Create a migration adding a new boolean column:
-require_location_verification BOOLEAN NOT NULL DEFAULT TRUE
-Ensure existing organizations default to enabled so current behavior is preserved.
-Expected Result
-
-Each organization now has its own configurable GPS requirement.
-
-Phase 2 — Types
-Objective
-
-Expose the new field throughout the application.
-
-Tasks
-
-Update every shared type that represents Site Settings.
-
-Examples:
-
-types/index.ts
-DTOs
-API response types
-Server action types
-
-Add:
-
-require_location_verification: boolean;
-Expected Result
-
-The frontend and backend can safely access the new setting.
-
-Phase 3 — Server Actions
-Objective
-
-Allow the new setting to be saved and retrieved.
-
-Tasks
-
-Update:
-
-saveSiteSettings()
-
-Include:
-
-require_location_verification
-
-Update validation to ensure the value is a boolean.
-
-Update the Supabase update statement.
-
-Expected Result
-
-Saving Settings now also persists GPS verification preferences.
-
-Phase 4 — Settings UI
-Objective
-
-Allow administrators to control attendance verification.
-
-4.1 Create a new Attendance Verification Card
-
-Place this above the Office Location section.
-
-Contents:
-
-Attendance Verification
-
-Require users to be within the office location
-
-[ Switch ]
-
-Description:
-
-When disabled, users may clock in and clock out without GPS verification.
-4.2 Update Form State
-
-Extend the existing form.
-
-Current:
-
-{
-    site_name,
-    latitude,
-    longitude,
-    radius_meters,
-    address
-}
-
-New:
-
-{
-    site_name,
-    latitude,
-    longitude,
-    radius_meters,
-    address,
-    require_location_verification
-}
-4.3 Update Initial Values
-
-Populate the switch using
-
-initialSettings.require_location_verification
-4.4 Update Save Logic
-
-Include the new property when saving.
-
-Expected Result
-
-Administrators can enable or disable GPS verification from Settings.
-
-Phase 5 — Improve the Settings Experience
-Objective
-
-Prevent administrators from editing settings that are currently inactive.
-
-Disable Office Location
-
-When GPS verification is OFF:
-
-Latitude
-Longitude
-Address
-Current Location button
-Google Maps Preview
-
-should appear disabled.
-
-Disable Verification Radius
-
-Disable:
-
-Radius field
-Radius chips
-Show Contextual Alert
-
-Display:
-
-GPS verification is currently disabled. Office location and radius settings are ignored until GPS verification is enabled again.
-
-Expected Result
-
-The UI clearly reflects the active attendance verification mode.
-
-Phase 6 — Attendance Flow
-Objective
-
-Skip GPS entirely when it isn't required.
-
-Current Flow
-
-Clock In
-
-↓
-
-Request GPS
-
-↓
-
-Calculate Distance
-
-↓
-
-Validate Radius
-
-↓
-
-Save Attendance
-
-New Flow
-
-Clock In
-
-↓
-
-Load Site Settings
-
-↓
-
-Is GPS Required?
-
-YES
-↓
-
-Request GPS
-
-↓
-
-Calculate Distance
-
-↓
-
-Validate Radius
-
-↓
-
-Save Attendance
-
-
-NO
-
-↓
-
-Skip GPS
-
-↓
-
-Save Attendance
-Expected Result
-
-Users are never asked for location permission when GPS verification is disabled.
-
-Phase 7 — Attendance API
-Objective
-
-Update backend validation.
-
-Tasks
-
-Before any location validation:
-
-Retrieve
-
-site_settings.require_location_verification
-
-If
-
-false
-
-Immediately continue with attendance processing.
-
-Skip:
-
-Location validation
-Distance calculation
-Radius comparison
-Expected Result
-
-The backend supports both verification modes.
-
-Phase 8 — Attendance Data
-Objective
-
-Handle GPS-disabled attendance records.
-
-When GPS is disabled:
-
-Store
-
-clock_in_latitude = NULL
-
-clock_in_longitude = NULL
-
-clock_in_distance_meters = NULL
-
-clock_out_latitude = NULL
-
-clock_out_longitude = NULL
-
-clock_out_distance_meters = NULL
-
-No schema changes are required.
-
-Phase 9 — Attendance History
-Objective
-
-Improve clarity when GPS is disabled.
-
-Instead of displaying
-
-N/A
-
-or
-
-0 m
-
-display
-
-GPS Verification Disabled
-
-or
-
-Location Not Required
-
-for those attendance records.
-
-Phase 10 — Testing
-Scenario 1
-
-GPS Enabled
-
-Expected:
-
-Browser requests location permission
-Distance calculated
-Radius enforced
-Coordinates saved
-Scenario 2
-
-GPS Disabled
-
-Expected:
-
-No browser permission prompt
-No location lookup
-Attendance succeeds
-GPS fields remain NULL
-Scenario 3
-
-Administrator Toggles Setting
-
-Expected:
-
-Save succeeds
-Reload persists switch state
-Attendance behavior changes immediately
-Scenario 4
-
-Multi-Organization
-
-Organization A
-
-GPS Enabled
-
-Organization B
-
-GPS Disabled
-
-Expected:
-
-Each organization behaves independently according to its own site_settings.
-
-Files to Modify
-Database
-site_settings table migration
-Types
-types/index.ts
-Any shared SiteSettings interfaces
-Settings
-SettingsClient.tsx
-saveSiteSettings()
-Attendance
-Clock In API/Server Action
-Clock Out API/Server Action
-Attendance validation utilities
-GPS helper (if applicable)
-Reports (Optional UX Improvement)
-Attendance history page
-Attendance details modal
-Success Criteria
-Administrators can toggle GPS verification on or off per organization.
-Users are not prompted for location access when GPS verification is disabled.
-Existing GPS and radius validation remains unchanged when enabled.
-Office Location and Radius settings are clearly inactive when GPS verification is disabled.
-The implementation is fully compatible with your existing multi-organization architecture and requires only a single additional field in site_settings.
+# Fix Email Invitation Flow and Link URLs in Production
+
+This plan outlines the root cause and proposed fixes for the issue where email invitations work correctly on localhost but fail silently in production (reporting success but never sending emails via Resend). It also addresses generating correct production URLs for invitation links instead of `http://localhost:3000`.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The environment variable `RESEND_API_KEY` must be configured in your production hosting platform dashboard. If it is missing, invitations will now fail with a visible warning/error in production rather than silently succeeding.
+>
+> Additionally, it is highly recommended to configure `NEXT_PUBLIC_SITE_URL` (e.g. `https://nexus-ojt.vercel.app` or your custom domain) in the production dashboard so that all links generated in emails point to the correct production domain.
+
+## Root Cause Analysis
+
+1. **Module-level Client Initialization & Caching**:
+   In `src/lib/services/email.ts`, the `Resend` client was initialized at the module level:
+   ```typescript
+   const resendApiKey = process.env.RESEND_API_KEY;
+   const resend = resendApiKey && resendApiKey !== 'placeholder' && !resendApiKey.startsWith('your_')
+     ? new Resend(resendApiKey)
+     : null;
+   ```
+   During Next.js production building or startup initialization, if `process.env.RESEND_API_KEY` was missing, `resend` was permanently cached as `null` for the lifetime of the process/serverless container.
+2. **Silent Failure Masking**:
+   When `resend` was `null`, `sendInvitationEmail` returned `{ success: true, error: '...' }` (mimicking successful mock delivery for development).
+   Since `success: true` was returned, the API routes (`/api/invitations` and `/api/invitations/[id]`) bypassed the error/warning logic and returned a `200 OK` response to the client. The frontend assumed success, surfaced no errors, and logged the invitation as sent, while the email was actually printed to the server logs and never sent to Resend.
+3. **Host Origin Resolution**:
+   Invitation links were built using `request.nextUrl.origin`. Behind reverse proxies, API Gateways, or Docker/serverless routers, this can resolve to `http://localhost:3000` or deployment-specific subdomains instead of the user-facing custom domain.
+
+## Proposed Changes
+
+### 1. New Site URL Utility
+We will create a helper to dynamically determine the correct frontend origin.
+
+#### [NEW] [url.ts](file:///d:/repos/ojt-tracker/src/lib/utils/url.ts)
+- Implement `getSiteUrl(request?: NextRequest): string`.
+- Prioritize `NEXT_PUBLIC_SITE_URL` and `SITE_URL` environment variables.
+- Fall back to checking request headers (`x-forwarded-proto` and `x-forwarded-host`/`host`) if provided.
+- Fall back to standard Vercel environment variables (`VERCEL_PROJECT_PRODUCTION_URL`, `VERCEL_URL`).
+- Fall back to `http://localhost:3000` for development.
+
+### 2. Email Service
+#### [MODIFY] [email.ts](file:///d:/repos/ojt-tracker/src/lib/services/email.ts)
+- Initialize `Resend` dynamically/lazily inside the email sending function instead of at the module level.
+- Log details of the Resend client initialization (safely obscuring the key).
+- In production (`process.env.NODE_ENV === 'production'`), return `success: false` if `RESEND_API_KEY` is missing or invalid, so that failures are correctly surfaced.
+- Retain the mock console-logging fallback only for development/test environments.
+
+### 3. Invitation API Routes
+#### [MODIFY] [route.ts](file:///d:/repos/ojt-tracker/src/app/api/invitations/route.ts)
+- Import `getSiteUrl` from `@/lib/utils/url`.
+- Use `getSiteUrl(request)` to generate the invitation link instead of `request.nextUrl.origin`.
+
+#### [MODIFY] [route.ts](file:///d:/repos/ojt-tracker/src/app/api/invitations/[id]/route.ts)
+- Import `getSiteUrl` from `@/lib/utils/url`.
+- Use `getSiteUrl(request)` to generate the invitation link instead of `request.nextUrl.origin`.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Build the Next.js project to ensure there are no compilation issues:
+  ```powershell
+  npm run build
+  ```
+
+### Manual Verification
+- Simulate a missing key in development to verify that it outputs the mock log and returns success in development mode.
+- Simulate production mode (temporarily set `process.env.NODE_ENV === 'production'`) and check that:
+  - If `RESEND_API_KEY` is missing, it returns `success: false` and the UI shows the error/warning.
+  - If `RESEND_API_KEY` is present, it uses the key and makes the Resend API request successfully.
+- Verify invitation links are constructed correctly using `NEXT_PUBLIC_SITE_URL` or fallback values.

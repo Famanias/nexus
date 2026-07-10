@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revokeInvitation } from '@/lib/services/invitation';
 import { sendInvitationEmail } from '@/lib/services/email';
 import crypto from 'crypto';
+import { getSiteUrl } from '@/lib/utils/url';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -111,8 +112,8 @@ export async function PUT(
 
     // 4. Send the email via Resend (falls back to console if no API key)
     const orgName = invitation.organization?.name || 'Nexus Organization';
-    const origin = request.nextUrl.origin;
-    const inviteUrl = `${origin}/invite/${token}`;
+    const siteUrl = getSiteUrl(request);
+    const inviteUrl = `${siteUrl}/invite/${token}`;
     const expiresAtStr = expiresAt.toLocaleString();
 
     const emailResult = await sendInvitationEmail({
