@@ -16,6 +16,8 @@ import PasswordField from './PasswordField';
 import PrimaryButton from './PrimaryButton';
 import AuthFooter from './AuthFooter';
 
+import { Turnstile } from '@marsidev/react-turnstile';
+
 // Integrated with wider (540px) layout to match RegisterForm and improve balance
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -23,6 +25,8 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = React.useRef<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
@@ -38,26 +42,37 @@ export default function LoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
+    }
+
+    setLoading(true);
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: {
+        captchaToken,
+      },
     });
 
     if (signInError) {
       setError(signInError.message);
       setLoading(false);
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       return;
     }
 
     if (data.user) {
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
 
       const role = profile?.role ?? 'ojt';
       router.push(next || `/dashboard/${role}`);
@@ -140,6 +155,25 @@ export default function LoginForm() {
             >
               Forgot password?
             </Link>
+          </Box>
+
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', minHeight: '65px' }}>
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => {
+                setCaptchaToken(null);
+                setError('CAPTCHA verification expired. Please verify again.');
+              }}
+              onError={() => {
+                setCaptchaToken(null);
+                setError('CAPTCHA verification failed. Please try again.');
+              }}
+              options={{
+                theme: 'light',
+              }}
+            />
           </Box>
 
           <PrimaryButton loading={loading}>Sign In</PrimaryButton>

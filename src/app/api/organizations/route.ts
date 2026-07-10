@@ -13,7 +13,49 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, orgName, inviteCode, fullName, email, password, inviteToken } = body;
+    const { action, orgName, inviteCode, fullName, email, password, inviteToken, captchaToken } = body;
+
+    const secretKey = process.env.NEXT_PUBLIC_TURNSTILE_SECRET_KEY;
+    if (!secretKey) {
+      return NextResponse.json(
+        { error: 'Server configuration error: missing Turnstile Secret Key.' },
+        { status: 500 }
+      );
+    }
+
+    if (!captchaToken) {
+      return NextResponse.json(
+        { error: 'CAPTCHA token is required.' },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: secretKey,
+          response: captchaToken,
+        }),
+      });
+
+      const verifyResult = await verifyRes.json();
+      if (!verifyResult.success) {
+        return NextResponse.json(
+          { error: 'CAPTCHA verification failed. Please try again.' },
+          { status: 400 }
+        );
+      }
+    } catch (verifyError) {
+      console.error('Turnstile verification error:', verifyError);
+      return NextResponse.json(
+        { error: 'Failed to verify CAPTCHA. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     // Only 'create' and 'join' require an email up front. 'accept_invite'
     // derives the email from the invitation itself, so it must not be

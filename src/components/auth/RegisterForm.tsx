@@ -23,6 +23,7 @@ import InputField from './InputField';
 import PasswordField from './PasswordField';
 import PrimaryButton from './PrimaryButton';
 import AuthFooter from './AuthFooter';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 interface InviteVerifyResult {
   valid: boolean;
@@ -64,6 +65,8 @@ export default function RegisterForm() {
   const [error, setError] = useState('');
   const [inviteValid, setInviteValid] = useState<InviteVerifyResult | null>(null);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = React.useRef<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
@@ -175,6 +178,11 @@ export default function RegisterForm() {
     e.preventDefault();
     setError('');
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
+    }
+
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
     if (password !== confirmPassword) {
@@ -226,13 +234,15 @@ export default function RegisterForm() {
     const res = await fetch('/api/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, captchaToken }),
     });
 
     const json = await res.json();
     if (!res.ok) {
       setError(json.error ?? 'Registration failed. Please try again.');
       setLoading(false);
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       return;
     }
 
@@ -445,6 +455,25 @@ export default function RegisterForm() {
             required
             sx={{ mb: 3 }}
           />
+
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', minHeight: '65px' }}>
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => {
+                setCaptchaToken(null);
+                setError('CAPTCHA verification expired. Please verify again.');
+              }}
+              onError={() => {
+                setCaptchaToken(null);
+                setError('CAPTCHA verification failed. Please try again.');
+              }}
+              options={{
+                theme: 'light',
+              }}
+            />
+          </Box>
 
           <PrimaryButton loading={loading}>Create Account</PrimaryButton>
         </Box>
