@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -20,7 +21,33 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await createClient();
+    const cookieStore = await cookies();
+    
+    // We create a temporary response object to capture Set-Cookie headers
+    const supabaseResponse = NextResponse.next();
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+                supabaseResponse.cookies.set(name, value, options);
+              });
+            } catch {
+              // Read-only context fallback
+            }
+          },
+        },
+      }
+    );
+
     const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!authError) {
@@ -37,26 +64,51 @@ export async function GET(request: Request) {
           console.error('Unexpected missing profile on callback:', profileError);
           // Sign out the user and return to login with error
           await supabase.auth.signOut();
-          return NextResponse.redirect(
+          
+          const redirectErrorResponse = NextResponse.redirect(
             `${origin}/login?error=${encodeURIComponent(
               'Your user profile could not be created automatically. Please contact an administrator.'
             )}`
           );
+          
+          // Copy any cookies set during signOut
+          supabaseResponse.cookies.getAll().forEach((c) => {
+            redirectErrorResponse.cookies.set(c.name, c.value, c);
+          });
+          
+          return redirectErrorResponse;
         }
 
-        // Redirect to original destination or default dashboard based on role
+        // Determine destination
+        let dest = `${origin}/dashboard/${profile.role}`;
         if (next) {
-          return NextResponse.redirect(`${origin}${next}`);
+          dest = `${origin}${next}`;
         }
-        return NextResponse.redirect(`${origin}/dashboard/${profile.role}`);
+
+        const redirectResponse = NextResponse.redirect(dest);
+        
+        // Copy cookies set during exchangeCodeForSession to the final redirect response
+        supabaseResponse.cookies.getAll().forEach((c) => {
+          redirectResponse.cookies.set(c.name, c.value, c);
+        });
+
+        return redirectResponse;
       }
     } else {
       console.error('Auth Error exchanging code for session:', authError);
-      return NextResponse.redirect(
+      
+      const redirectErrorResponse = NextResponse.redirect(
         `${origin}/login?error=${encodeURIComponent(authError.message)}`
       );
+      
+      supabaseResponse.cookies.getAll().forEach((c) => {
+        redirectErrorResponse.cookies.set(c.name, c.value, c);
+      });
+      
+      return redirectErrorResponse;
     }
   }
 
   return NextResponse.redirect(`${origin}/login?error=Authentication failed`);
 }
+
