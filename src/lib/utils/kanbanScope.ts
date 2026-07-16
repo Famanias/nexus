@@ -16,10 +16,7 @@ export function isOrganizationBoard(profile: Profile | null | undefined): boolea
 
 export function canManageColumns(profile: Profile | null | undefined): boolean {
   if (!profile) return false;
-  // Personal board: full control
-  if (!profile.org_id) return true;
-  // Org board: only admins can manage columns
-  return profile.role === 'admin';
+  return true;
 }
 
 export function canManageTasks(profile: Profile | null | undefined): boolean {
