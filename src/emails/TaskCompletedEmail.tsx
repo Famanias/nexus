@@ -12,20 +12,20 @@ import {
 } from '@react-email/components';
 import * as React from 'react';
 
-interface TaskAssignedEmailProps {
-  assigneeName: string;
+interface TaskCompletedEmailProps {
+  creatorName: string;
   taskTitle: string;
-  assignedByName?: string;
+  completedByName: string;
   taskUrl: string;
 }
 
-export const TaskAssignedEmail = ({
-  assigneeName = 'OJT',
-  taskTitle = 'New Task',
-  assignedByName = 'Your Supervisor',
-  taskUrl = 'https://nexxus.lol/dashboard',
-}: TaskAssignedEmailProps) => {
-  const previewText = `You have been assigned a new task: ${taskTitle}`;
+export const TaskCompletedEmail = ({
+  creatorName = 'Supervisor',
+  taskTitle = 'Unknown Task',
+  completedByName = 'An OJT',
+  taskUrl = 'https://nexxus.lol/dashboard/kanban',
+}: TaskCompletedEmailProps) => {
+  const previewText = `Task Completed: ${taskTitle}`;
 
   return (
     <Html>
@@ -33,14 +33,14 @@ export const TaskAssignedEmail = ({
       <Preview>{previewText}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={h1}>New Task Assignment</Heading>
+          <Heading style={h1}>Task Completed 🎉</Heading>
           
           <Text style={text}>
-            Hello {assigneeName},
+            Hello {creatorName},
           </Text>
           
           <Text style={text}>
-            <strong>{assignedByName}</strong> has assigned a new task to you on the Kanban board.
+            Good news! <strong>{completedByName}</strong> has just completed a task you created on the Kanban board.
           </Text>
 
           <Section style={taskBox}>
@@ -56,7 +56,7 @@ export const TaskAssignedEmail = ({
           <Hr style={hr} />
           
           <Text style={footer}>
-            If you have any questions, please reach out to your supervisor.
+            You are receiving this email because you are the creator of this task.
             <br />
             Nexus Automation System
           </Text>
@@ -66,7 +66,7 @@ export const TaskAssignedEmail = ({
   );
 };
 
-export default TaskAssignedEmail;
+export default TaskCompletedEmail;
 
 const main = {
   backgroundColor: '#f6f9fc',
@@ -101,8 +101,8 @@ const text = {
 };
 
 const taskBox = {
-  backgroundColor: '#f8fafc',
-  border: '1px solid #e2e8f0',
+  backgroundColor: '#f0fdf4',
+  border: '1px solid #bbf7d0',
   borderRadius: '6px',
   padding: '16px',
   margin: '24px 0',
@@ -110,7 +110,7 @@ const taskBox = {
 };
 
 const taskTitleText = {
-  color: '#0f172a',
+  color: '#166534',
   fontSize: '18px',
   fontWeight: '600',
   margin: '0',

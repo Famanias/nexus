@@ -42,7 +42,10 @@ export async function POST(
       .update({ completed_at: new Date().toISOString(), completed_by: user.id })
       .eq('id', id)
       .is('completed_at', null)
-      .select()
+      .select(`
+        *,
+        creator:profiles!kanban_tasks_assignee_id_fkey(id, email, full_name)
+      `)
       .single();
 
     if (updateError || !updatedTask) {
@@ -60,6 +63,8 @@ export async function POST(
       priority: updatedTask.priority,
       completedBy: profile?.full_name || profile?.email || user.id,
       completedAt: updatedTask.completed_at,
+      creatorEmail: updatedTask.creator?.email,
+      creatorName: updatedTask.creator?.full_name,
       organizationId: updatedTask.org_id,
       timestamp: new Date().toISOString()
     }, updatedTask.org_id).catch(console.error);

@@ -125,6 +125,8 @@ export interface TaskCompletedPayload {
   title: string;
   completedBy: string;
   completedByName?: string;
+  creatorEmail?: string;
+  creatorName?: string;
 }
 
 export interface TaskDeletedPayload {
