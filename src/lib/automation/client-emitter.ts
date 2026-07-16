@@ -24,16 +24,17 @@ import type { AutomationEventName } from '@/lib/automation/types';
  * - It never blocks the UI
  * - Failures are silently logged to the console
  */
-export function emitClientEvent(
+export async function emitClientEvent(
   event: AutomationEventName,
   payload: Record<string, unknown> = {}
-): void {
-  // Fire-and-forget — don't await, don't block UI
-  fetch('/api/automation/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, payload }),
-  }).catch((err) => {
+): Promise<void> {
+  try {
+    await fetch('/api/automation/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, payload }),
+    });
+  } catch (err) {
     console.warn(`[Automation] Failed to emit ${event}:`, err);
-  });
+  }
 }

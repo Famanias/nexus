@@ -184,11 +184,11 @@ export default function TaskModal({
       await supabase.from('task_assignees').insert(assigneesToInsert);
     }
 
-    // Emit automation events (fire-and-forget)
+    // Emit automation events (wait for them to finish sending to prevent aborted fetches on unmount)
     if (taskId) {
       if (!editingTask) {
         // task.created event
-        emitClientEvent('task.created', {
+        await emitClientEvent('task.created', {
           taskId,
           title: title.trim(),
           description: description || undefined,
@@ -207,10 +207,10 @@ export default function TaskModal({
       const newAssigneeIds = assignedOjtIds.filter(id => !oldAssigneeIds.includes(id));
 
       // task.assigned events for each newly assigned user
-      newAssigneeIds.forEach((uid) => {
+      for (const uid of newAssigneeIds) {
         const ojt = ojts.find((o) => o.id === uid);
         if (ojt) {
-          emitClientEvent('task.assigned', {
+          await emitClientEvent('task.assigned', {
             taskId,
             title: title.trim(),
             assigneeId: uid,
@@ -220,7 +220,7 @@ export default function TaskModal({
             assignedByName: currentUser?.full_name,
           });
         }
-      });
+      }
     }
 
     // Wait for any still-uploading files to finish
