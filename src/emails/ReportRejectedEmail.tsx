@@ -42,7 +42,7 @@ export const ReportRejectedEmail = ({
             Hello <strong>{studentName}</strong>,
           </Text>
           <Text style={textStyle}>
-            Your submitted report <strong>"{title}"</strong> requires changes before it can be approved by <strong>{rejectedByName}</strong>.
+            Your submitted report <strong>&quot;{title}&quot;</strong> requires changes before it can be approved by <strong>{rejectedByName}</strong>.
           </Text>
           {reason && (
             <Text style={reasonBoxStyle}>

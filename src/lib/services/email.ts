@@ -90,8 +90,9 @@ export async function sendInvitationEmail(params: SendInvitationEmailParams): Pr
 
     console.log(`[Email Service] Resend email delivery success. Message ID: ${data?.id}`);
     return { success: true, messageId: data?.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error('[Email Service] Unexpected exception during sending:', err);
-    return { success: false, error: err.message ?? String(err) };
+    return { success: false, error: msg };
   }
 }

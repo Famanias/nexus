@@ -70,7 +70,8 @@ export async function POST(
     }, updatedTask.org_id).catch(console.error);
 
     return NextResponse.json({ success: true, task: updatedTask });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg || 'Internal Server Error' }, { status: 500 });
   }
 }

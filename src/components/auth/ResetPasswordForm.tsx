@@ -59,7 +59,7 @@ export default function ResetPasswordForm() {
 
       if (code) {
         try {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
             if (mounted) {
               setSessionError(exchangeError.message);
@@ -73,9 +73,10 @@ export default function ResetPasswordForm() {
             setCheckingSession(false);
           }
           return;
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
           if (mounted) {
-            setSessionError(err.message || 'Failed to verify reset link.');
+            setSessionError(msg || 'Failed to verify reset link.');
             setSessionValid(false);
             setCheckingSession(false);
           }
@@ -100,7 +101,7 @@ export default function ResetPasswordForm() {
       // 3. Check for hash parameters (Implicit flow)
       const hash = typeof window !== 'undefined' ? window.location.hash : '';
       if (hash && (hash.includes('type=recovery') || hash.includes('access_token='))) {
-        const timeout = setTimeout(async () => {
+        setTimeout(async () => {
           const { data: { session: hashSession } } = await supabase.auth.getSession();
           if (mounted) {
             if (hashSession) {
@@ -116,7 +117,7 @@ export default function ResetPasswordForm() {
       }
 
       // 4. Fallback: Listen to PASSWORD_RECOVERY event
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
         if (!mounted) return;
         if (event === 'PASSWORD_RECOVERY') {
           setSessionValid(true);

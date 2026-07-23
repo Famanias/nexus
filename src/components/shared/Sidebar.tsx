@@ -71,7 +71,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
       const res = await fetch('/api/notifications');
       if (res.ok) {
         const notifications = await res.json();
-        const unread = notifications.filter((n: any) => !n.is_read).length;
+        const unread = (notifications || []).filter((n: { is_read: boolean }) => !n.is_read).length;
         setUnreadCount(unread);
       }
     } catch (err) {
@@ -200,19 +200,22 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         router.refresh();
         router.push(`/dashboard/${profile?.role}`);
       }
-    } catch (err: any) {
-      setPromotionError(err.message ?? 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPromotionError(msg || 'An unexpected error occurred.');
       setPromotingAndLeaving(false);
     }
   };
 
+  const activeRole = profile?.system_role ?? profile?.role ?? '';
+
   const filteredItems = navItems.filter((item) =>
-    item.roles.includes(profile?.role ?? '')
+    item.roles.includes(activeRole)
   );
 
   const handleNav = (path: string) => {
     if (path === '/dashboard') {
-      router.push(`/dashboard/${profile?.role}`);
+      router.push(`/dashboard/${activeRole}`);
     } else {
       router.push(path);
     }

@@ -48,8 +48,9 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
         throw new Error(data.error || 'Failed to complete task');
       }
       onMarkAsDone?.();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(msg || 'An error occurred');
     } finally {
       setCompleting(false);
     }

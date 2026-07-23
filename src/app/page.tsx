@@ -148,7 +148,7 @@ export default function Home() {
               </div>
               <span className="role-tag">Oversight</span>
               <h4>Supervisor</h4>
-              <p>Reviews logs, approves attendance, and monitors every assigned trainee's progress from one dashboard.</p>
+              <p>Reviews logs, approves attendance, and monitors every assigned trainee&apos;s progress from one dashboard.</p>
             </div>
             <div className="role-card">
               <div className="role-marker">

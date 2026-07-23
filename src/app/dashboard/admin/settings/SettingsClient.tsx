@@ -59,7 +59,7 @@ export default function SettingsClient({
         require_location_verification: data.require_location_verification ?? true,
       });
     }
-  }, []);
+  }, [supabase]);
 
   const handleCopyInviteCode = () => {
     if (organization?.invite_code) {

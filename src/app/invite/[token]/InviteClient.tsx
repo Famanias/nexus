@@ -66,8 +66,9 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
           router.push(`/dashboard/${json.role}`);
           router.refresh();
         }, 1500);
-      } catch (err: any) {
-        setError(err.message ?? 'An error occurred while accepting the invitation.');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg || 'An error occurred while accepting the invitation.');
         setLoading(false);
       }
     };

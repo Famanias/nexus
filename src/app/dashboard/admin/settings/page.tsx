@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import SettingsClient from './SettingsClient';
-import { Organization } from '@/types';
+import { Organization, Profile } from '@/types';
 import RequireOrganization from '@/components/shared/RequireOrganization';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function SiteSettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   let organization: Organization | null = null;
   let hasOrg = false;
-  let fullProfile: any = null;
+  let fullProfile: Profile | null = null;
   
   if (user) {
     const { data: profile } = await supabase

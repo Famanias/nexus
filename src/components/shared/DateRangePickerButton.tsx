@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Box, Button, Popover, Typography, IconButton, Select, MenuItem,
 } from '@mui/material';
@@ -197,8 +197,8 @@ function CalendarGrid({
 // ─── main component ────────────────────────────────────────────────────────────
 
 export default function DateRangePickerButton({ dateFrom, dateTo, isAllTime, onChange }: Props) {
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const open = Boolean(anchorEl);
 
   const today = new Date();
   const curMonth = today.getMonth();
@@ -215,28 +215,28 @@ export default function DateRangePickerButton({ dateFrom, dateTo, isAllTime, onC
 
   const yearOptions = Array.from({ length: 12 }, (_, i) => curYear - 6 + i);
 
-  const handleOpen = () => {
+  const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
     setTempFrom(isAllTime ? '' : dateFrom);
     setTempTo(isAllTime   ? '' : dateTo);
     setStage('from');
     setHover('');
-    setOpen(true);
   };
 
-  const handleCancel = () => setOpen(false);
+  const handleCancel = () => setAnchorEl(null);
 
   const handleDone = () => {
     if (tempFrom && tempTo) {
       onChange({ dateFrom: tempFrom, dateTo: tempTo, isAllTime: false });
     }
-    setOpen(false);
+    setAnchorEl(null);
   };
 
   const handleAllTime = () => {
     setTempFrom('');
     setTempTo('');
     onChange({ dateFrom: '', dateTo: '', isAllTime: true });
-    setOpen(false);
+    setAnchorEl(null);
   };
 
   const handleDayClick = (d: Date) => {
@@ -292,7 +292,6 @@ export default function DateRangePickerButton({ dateFrom, dateTo, isAllTime, onC
   return (
     <>
       <Button
-        ref={anchorRef}
         variant="outlined"
         startIcon={<CalendarIcon fontSize="small" />}
         onClick={handleOpen}
@@ -304,7 +303,7 @@ export default function DateRangePickerButton({ dateFrom, dateTo, isAllTime, onC
 
       <Popover
         open={open}
-        anchorEl={anchorRef.current}
+        anchorEl={anchorEl}
         onClose={handleCancel}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, Avatar, AvatarGroup, Chip,
+  Button, Typography, Box, Avatar, Chip,
   IconButton, Tooltip, Divider, CircularProgress, Alert,
 } from '@mui/material';
 import {
@@ -49,7 +49,6 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
   if (!task) return null;
 
   const isCreator = task.assignee_id === currentUser.id;
-  const canManage = currentUser.role === 'admin' || currentUser.role === 'supervisor';
 
   const allAssignees = task.task_assignees_detail ?? [];
   const myRecord = allAssignees.find((a) => a.user_id === currentUser.id);

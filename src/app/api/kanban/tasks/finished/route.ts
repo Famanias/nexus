@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     // Time filter
     if (timeRange !== 'all') {
       const now = new Date();
-      let fromDate = new Date();
+      const fromDate = new Date();
       if (timeRange === 'today') {
         fromDate.setHours(0, 0, 0, 0);
       } else if (timeRange === '7days') {
@@ -85,7 +85,8 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ tasks });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg || 'Internal Server Error' }, { status: 500 });
   }
 }

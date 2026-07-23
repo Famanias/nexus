@@ -26,6 +26,7 @@ export default function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const turnstileRef = React.useRef<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();

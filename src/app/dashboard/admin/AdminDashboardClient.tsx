@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import {
   Box, Grid, Typography, Card,
   IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -65,9 +65,11 @@ function formatInTz(d: Date, tz: string) {
   return { date, time, offset };
 }
 
+const subscribe = () => () => {};
+
 export default function AdminDashboardClient({ stats, initialAttendance, settingsId, initialTimezone }: Props) {
   const [now, setNow] = useState(new Date());
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const [timezone, setTimezone] = useState(initialTimezone || 'UTC');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingTz, setPendingTz] = useState(timezone);
@@ -77,7 +79,6 @@ export default function AdminDashboardClient({ stats, initialAttendance, setting
   const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);

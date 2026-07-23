@@ -28,7 +28,7 @@ export async function PATCH(
     const body = await request.json();
     const { title, color } = body;
 
-    const updates: any = {};
+    const updates: Record<string, string> = {};
     if (title && title.trim()) updates.title = title.trim();
     if (color) updates.color = color;
 
@@ -56,7 +56,7 @@ export async function PATCH(
     }
 
     return NextResponse.json(updatedCol);
-  } catch (err: any) {
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -106,7 +106,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

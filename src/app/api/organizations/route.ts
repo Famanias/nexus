@@ -108,10 +108,11 @@ export async function POST(request: NextRequest) {
       try {
         // 2. Create organization and configure everything using the service
         await createOrganization(supabaseAdmin, orgName, userId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Clean up the auth user if creation fails
+        const msg = err instanceof Error ? err.message : String(err);
         await supabaseAdmin.auth.admin.deleteUser(userId);
-        return NextResponse.json({ error: err.message }, { status: 400 });
+        return NextResponse.json({ error: msg }, { status: 400 });
       }
 
       // Emit domain events (fire-and-forget)
@@ -155,10 +156,11 @@ export async function POST(request: NextRequest) {
       try {
         // 2. Join organization using the service
         await joinOrganization(supabaseAdmin, inviteCode, userId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Clean up the auth user if join fails
+        const msg = err instanceof Error ? err.message : String(err);
         await supabaseAdmin.auth.admin.deleteUser(userId);
-        return NextResponse.json({ error: err.message }, { status: 400 });
+        return NextResponse.json({ error: msg }, { status: 400 });
       }
 
       // Emit user.created event
@@ -198,10 +200,11 @@ export async function POST(request: NextRequest) {
 
       try {
         await acceptInvitation(supabaseAdmin, inviteToken, userId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Clean up the auth user if accept fails
+        const msg = err instanceof Error ? err.message : String(err);
         await supabaseAdmin.auth.admin.deleteUser(userId);
-        return NextResponse.json({ error: err.message }, { status: 400 });
+        return NextResponse.json({ error: msg }, { status: 400 });
       }
 
       // Emit user.created event

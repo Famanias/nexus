@@ -1,4 +1,4 @@
-import { format, formatDuration, intervalToDuration } from 'date-fns';
+import { format } from 'date-fns';
 
 export function formatDate(dateString: string): string {
   return format(new Date(dateString), 'MMM dd, yyyy');

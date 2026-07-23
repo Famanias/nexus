@@ -19,6 +19,7 @@ export interface Profile {
   full_name: string;
   email: string;
   role: UserRole;
+  system_role?: UserRole;
   org_id?: string;
   avatar_url?: string;
   department?: string;

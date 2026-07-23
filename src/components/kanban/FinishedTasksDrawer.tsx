@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, Box, Typography, IconButton, MenuItem, Select, FormControl, InputLabel, CircularProgress, Chip, Stack, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
@@ -27,7 +27,7 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
   const [timeRange, setTimeRange] = useState('all');
   const [sort, setSort] = useState('newest');
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/kanban/tasks/finished?timeRange=${timeRange}&sort=${sort}`);
@@ -42,7 +42,7 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange, sort]);
 
   const handleUncomplete = async (id: string) => {
     try {
@@ -63,7 +63,7 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
     if (open) {
       fetchTasks();
     }
-  }, [open, timeRange, sort]);
+  }, [open, timeRange, sort, fetchTasks]);
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, p: 0, bgcolor: '#f8fafc' } }}>

@@ -21,7 +21,7 @@ interface Props {
   profileId?: string;
 }
 
-export default function ColumnDialog({ open, onClose, onSave, editingColumn, nextPosition, profileId }: Props) {
+export default function ColumnDialog({ open, onClose, onSave, editingColumn }: Props) {
   const [title, setTitle] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [saving, setSaving] = useState(false);
@@ -46,8 +46,9 @@ export default function ColumnDialog({ open, onClose, onSave, editingColumn, nex
     try {
       await onSave(title.trim(), color);
       onClose();
-    } catch (err: any) {
-      setError(err.message ?? 'An error occurred.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'An error occurred.');
     } finally {
       setSaving(false);
     }

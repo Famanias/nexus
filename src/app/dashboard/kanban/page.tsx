@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { KanbanColumn, Profile, TaskAssigneeDetail } from '@/types';
 import KanbanBoardClient from '@/components/kanban/KanbanBoardClient';
-import RequireOrganization from '@/components/shared/RequireOrganization';
 
 export const dynamic = 'force-dynamic';
 

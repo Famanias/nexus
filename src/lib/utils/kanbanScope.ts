@@ -24,7 +24,8 @@ export function canManageTasks(profile: Profile | null | undefined): boolean {
   // Personal board: full control
   if (!profile.org_id) return true;
   // Org board: admin and supervisor can manage tasks
-  return profile.role === 'admin' || profile.role === 'supervisor';
+  const role = profile.system_role ?? profile.role;
+  return role === 'admin' || role === 'supervisor';
 }
 
 export function canAssignUsers(profile: Profile | null | undefined): boolean {
@@ -44,10 +45,11 @@ export function canEditTask(
   // Personal board: if they are the task creator
   if (!profile.org_id) return taskAssigneeId === profile.id;
   // Org board: creator, admin, supervisor, or accepted assignee
+  const role = profile.system_role ?? profile.role;
   return (
     taskAssigneeId === profile.id ||
-    profile.role === 'admin' ||
-    profile.role === 'supervisor' ||
+    role === 'admin' ||
+    role === 'supervisor' ||
     isAcceptedAssignee
   );
 }

@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { validateWebhookUrl, maskWebhookUrl, IntegrationProvider } from '@/lib/integrations/validation';
 import { invalidateOrgIntegrationsCache } from '@/lib/integrations/cache';
+import { encryptSecret, decryptSecret } from '@/lib/services/encryption';
 
 export interface OrgIntegrationData {
   id?: string;
@@ -51,16 +52,19 @@ export async function getOrgIntegrations(): Promise<{ data?: OrgIntegrationData[
       return { error: fetchError.message };
     }
 
-    const formatted: OrgIntegrationData[] = (integrations || []).map((row) => ({
-      id: row.id,
-      provider: row.provider as IntegrationProvider,
-      enabled: row.enabled,
-      maskedWebhookUrl: maskWebhookUrl(row.secrets?.webhook_url),
-      config: row.config || {},
-      lastTestedAt: row.last_tested_at,
-      lastStatus: row.last_status,
-      lastError: row.last_error,
-    }));
+    const formatted: OrgIntegrationData[] = (integrations || []).map((row) => {
+      const decryptedUrl = row.secrets?.webhook_url ? decryptSecret(row.secrets.webhook_url) : '';
+      return {
+        id: row.id,
+        provider: row.provider as IntegrationProvider,
+        enabled: row.enabled,
+        maskedWebhookUrl: maskWebhookUrl(decryptedUrl),
+        config: row.config || {},
+        lastTestedAt: row.last_tested_at,
+        lastStatus: row.last_status,
+        lastError: row.last_error,
+      };
+    });
 
     return { data: formatted };
   } catch (err) {
@@ -106,7 +110,7 @@ export async function saveOrgIntegration(params: {
       if (!val.isValid) {
         return { error: val.error };
       }
-      updateSecrets = { webhook_url: webhookUrl.trim() };
+      updateSecrets = { webhook_url: encryptSecret(webhookUrl.trim()) };
     }
 
     // Check existing integration row

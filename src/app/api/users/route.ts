@@ -18,10 +18,11 @@ async function getCallerOrgId(): Promise<string | null> {
   if (!user) return null;
   const { data: profile } = await supabase
     .from('profiles')
-    .select('org_id, role')
+    .select('org_id, role, system_role')
     .eq('id', user.id)
     .single();
-  if (!profile || profile.role !== 'admin') return null;
+  const callerRole = profile?.system_role ?? profile?.role;
+  if (!profile || callerRole !== 'admin') return null;
   return profile.org_id ?? null;
 }
 

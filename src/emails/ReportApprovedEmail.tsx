@@ -42,7 +42,7 @@ export const ReportApprovedEmail = ({
             Hello <strong>{studentName}</strong>,
           </Text>
           <Text style={textStyle}>
-            Great news! Your report <strong>"{title}"</strong> has been approved by <strong>{approvedByName}</strong>.
+            Great news! Your report <strong>&quot;{title}&quot;</strong> has been approved by <strong>{approvedByName}</strong>.
           </Text>
           {feedback && (
             <Text style={feedbackBoxStyle}>

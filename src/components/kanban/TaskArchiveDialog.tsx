@@ -88,11 +88,22 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
     );
     setTasks(remaining as ArchivedTask[]);
     setLoading(false);
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
-    if (open) load();
+    let active = true;
+    if (open) {
+      Promise.resolve().then(async () => {
+        if (!active) return;
+        await load();
+      });
+    }
+    return () => {
+      active = false;
+    };
   }, [open, load]);
+
+  const [mountTime] = useState(() => Date.now());
 
   const restoreTask = async (taskId: string) => {
     setProcessingId(taskId);
@@ -123,7 +134,7 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
   };
 
   const daysRemaining = (archivedAt: string) => {
-    const ms = Date.now() - new Date(archivedAt).getTime();
+    const ms = mountTime - new Date(archivedAt).getTime();
     const daysPassed = ms / (1000 * 60 * 60 * 24);
     return Math.max(0, retentionDays - daysPassed);
   };

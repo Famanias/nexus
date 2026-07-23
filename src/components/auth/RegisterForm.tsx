@@ -66,6 +66,7 @@ export default function RegisterForm() {
   const [inviteValid, setInviteValid] = useState<InviteVerifyResult | null>(null);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const turnstileRef = React.useRef<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();

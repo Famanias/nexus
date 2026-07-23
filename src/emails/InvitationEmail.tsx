@@ -51,7 +51,7 @@ export const InvitationEmail = ({
             </Button>
           </Section>
           <Text style={textStyle}>
-            If the button doesn't work, copy and paste this link into your browser:
+            If the button doesn&apos;t work, copy and paste this link into your browser:
           </Text>
           <Link href={inviteUrl} style={linkStyle}>
             {inviteUrl}

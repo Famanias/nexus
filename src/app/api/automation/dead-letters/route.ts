@@ -4,6 +4,7 @@ import { emitEvent } from '@/lib/automation/client';
 import { AutomationEventName } from '@/lib/automation/types';
 
 // Helper to authenticate and return user org info
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function requireAdmin(_request: NextRequest) {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();

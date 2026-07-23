@@ -28,8 +28,9 @@ export default function NotificationsClient() {
       if (!res.ok) throw new Error('Failed to load notifications.');
       const data = await res.json();
       setNotifications(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
     } finally {
       setLoading(false);
     }

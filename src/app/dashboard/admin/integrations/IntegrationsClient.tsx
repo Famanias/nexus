@@ -4,7 +4,7 @@
 // Admin Integrations Dashboard Client Component
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button,
   Alert, Grid, CircularProgress, Switch, Chip, Tooltip, IconButton, InputAdornment,
@@ -282,7 +282,7 @@ export default function IntegrationsClient({
               Organization Webhook Integrations
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Configure real-time Slack and Discord alerts for your organization's tasks, attendance, and reports.
+              Configure real-time Slack and Discord alerts for your organization&apos;s tasks, attendance, and reports.
             </Typography>
           </Box>
         </Box>

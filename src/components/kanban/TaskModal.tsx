@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Grid, FormControl, InputLabel, Select,
@@ -20,7 +20,7 @@ import { useDropzone } from 'react-dropzone';
 import { createClient } from '@/lib/supabase/client';
 import { uploadTaskAttachment, deleteTaskAttachments } from '@/actions/attachments';
 import { KanbanTask, KanbanColumn, Profile, TaskAttachment } from '@/types';
-import { isPersonalBoard, canAssignUsers } from '@/lib/utils/kanbanScope';
+import { canAssignUsers } from '@/lib/utils/kanbanScope';
 import { getFileType, formatFileSize, priorityColor } from '@/lib/utils/format';
 import { v4 as uuidv4 } from 'uuid';
 import { emitClientEvent } from '@/lib/automation/client-emitter';
@@ -68,13 +68,13 @@ export default function TaskModal({
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const supabase = createClient();
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(false);
+  const [prevEditingTask, setPrevEditingTask] = useState<KanbanTask | null>(null);
+
+  if (open !== prevOpen || editingTask !== prevEditingTask) {
+    setPrevOpen(open);
+    setPrevEditingTask(editingTask);
     if (open) {
-      // Revoke any previous blob URLs then reset
-      setUploadingFiles((prev) => {
-        prev.forEach((u) => { if (u.previewUrl) URL.revokeObjectURL(u.previewUrl); });
-        return [];
-      });
       if (editingTask) {
         setTitle(editingTask.title);
         setDescription(editingTask.description ?? '');
@@ -93,9 +93,8 @@ export default function TaskModal({
         setExistingAttachments([]);
       }
       setError('');
-
     }
-  }, [open, editingTask, defaultColumnId]);
+  }
 
   // Upload via server action (service-role key) — bypasses bucket RLS entirely.
   const uploadFileNow = useCallback(async (uploadId: string, file: File) => {

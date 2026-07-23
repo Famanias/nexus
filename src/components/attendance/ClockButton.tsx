@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Alert, Chip,
-  CircularProgress, Tooltip, LinearProgress,
+  CircularProgress,
 } from '@mui/material';
 import {
   PlayArrow as ClockInIcon,

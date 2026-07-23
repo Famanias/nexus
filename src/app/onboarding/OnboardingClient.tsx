@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Alert, Stack, Typography, Tabs, Tab, Chip,
+  Box, Alert, Typography, Tabs, Tab, Chip,
   InputAdornment, CircularProgress, Link, Button
 } from '@mui/material';
 import {
@@ -98,8 +98,9 @@ export default function OnboardingClient({ fullName, email }: OnboardingClientPr
       await supabase.auth.refreshSession();
       router.refresh();
       router.push(`/dashboard/${json.role}`);
-    } catch (err: any) {
-      setError(err.message ?? 'An error occurred during automatic onboarding. Please try manually below.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'An error occurred during automatic onboarding. Please try manually below.');
       setAutoLoading(false);
       setLoading(false);
     }
@@ -163,8 +164,9 @@ export default function OnboardingClient({ fullName, email }: OnboardingClientPr
       await supabase.auth.refreshSession();
       router.refresh();
       router.push(`/dashboard/${json.role}`);
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to complete onboarding. Please try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Failed to complete onboarding. Please try again.');
       setLoading(false);
     }
   };

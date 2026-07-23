@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest) {
 
     await reorderTasks(supabase, tasks);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

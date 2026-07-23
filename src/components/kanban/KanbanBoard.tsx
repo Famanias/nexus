@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   DndContext, DragOverlay, closestCorners, PointerSensor,
   useSensor, useSensors, DragStartEvent, DragOverEvent, DragEndEvent,
-  UniqueIdentifier,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -78,7 +77,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
 
   type RawAssignee = { user_id: string; status?: string; profile: Profile };
 
-  const buildEnrichedCols = (cols: KanbanColumn[], tasks: KanbanTask[]) =>
+  const buildEnrichedCols = useCallback((cols: KanbanColumn[], tasks: KanbanTask[]) =>
     (cols ?? []).map((col) => ({
       ...col,
       tasks: (tasks ?? [])
@@ -98,7 +97,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
               .map((a) => a.profile),
           };
         }),
-    }));
+    })), []);
 
   const fetchBoard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -147,7 +146,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
     setColumns(buildEnrichedCols(cols ?? [], tasks as any ?? []));
     setLoading(false);
     setIsRefreshing(false);
-  }, []);
+  }, [buildEnrichedCols, supabase]);
 
   useEffect(() => { fetchBoard(false); }, [fetchBoard]);
 
@@ -194,9 +193,6 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
     }
   };
 
-  const findColumnOfTask = (taskId: string) =>
-    columns.find((col) => col.tasks?.some((t) => t.id === taskId));
-
   const volunteerForTask = async (taskId: string) => {
     const { error: err } = await supabase
       .from('task_assignees')
@@ -226,7 +222,8 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
 
       if (!activeCol || !overCol || activeCol.id === overCol.id) return prev;
 
-      const activeTask = activeCol.tasks?.find((t) => t.id === activeId)!;
+      const activeTask = activeCol.tasks?.find((t) => t.id === activeId);
+      if (!activeTask) return prev;
       const overTaskIndex = overCol.tasks?.findIndex((t) => t.id === overId) ?? overCol.tasks?.length ?? 0;
 
       return prev.map((col) => {
@@ -462,7 +459,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
           throw new Error(json.error ?? 'Failed to update column.');
         }
         fetchBoard(true); // Silent reload
-      } catch (err: any) {
+      } catch (err: unknown) {
         setColumns(originalColumns);
         throw err;
       }
@@ -497,7 +494,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
           prev.map((c) => (c.id === tempId ? { ...createdCol, tasks: [] } : c))
         );
         fetchBoard(true); // Silent reload
-      } catch (err: any) {
+      } catch (err: unknown) {
         setColumns(originalColumns);
         throw err;
       }
@@ -529,8 +526,9 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
       setDeleteColMoveTarget('');
       setDeleteColAction('archive');
       fetchBoard(true);
-    } catch (err: any) {
-      alert(err.message ?? 'An error occurred during column deletion.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(msg || 'An error occurred during column deletion.');
     }
   };
 

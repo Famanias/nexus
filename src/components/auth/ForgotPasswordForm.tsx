@@ -18,6 +18,7 @@ export default function ForgotPasswordForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const turnstileRef = React.useRef<any>(null);
   const supabase = createClient();
 
@@ -69,7 +70,7 @@ export default function ForgotPasswordForm() {
             <Alert severity="success" sx={{ borderRadius: 2 }}>
               <strong>Password reset email sent.</strong>
               <br />
-              If an account exists with that email, you'll receive a password reset link shortly.
+              If an account exists with that email, you&apos;ll receive a password reset link shortly.
             </Alert>
             <Typography variant="body2" color="text.secondary" textAlign="center">
               Please check your inbox (and spam folder) for the reset link.

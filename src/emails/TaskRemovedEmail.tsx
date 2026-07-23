@@ -38,7 +38,7 @@ export const TaskRemovedEmail = ({
             Hello,
           </Text>
           <Text style={textStyle}>
-            The task <strong>"{title}"</strong> was removed by <strong>{deletedByName}</strong> on the Kanban board.
+            The task <strong>&quot;{title}&quot;</strong> was removed by <strong>{deletedByName}</strong> on the Kanban board.
           </Text>
           <Section style={btnContainerStyle}>
             <Button style={buttonStyle} href={kanbanUrl}>

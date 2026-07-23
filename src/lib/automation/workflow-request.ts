@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AutomationEvent } from './types';
 
-interface ParsedAutomationRequest<T> extends AutomationEvent<T> {
-  // Contains everything from the envelope
-}
+type ParsedAutomationRequest<T> = AutomationEvent<T>;
 
 /**
  * Validates the N8N_API_KEY header.

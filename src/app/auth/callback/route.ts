@@ -86,7 +86,7 @@ export async function GET(request: Request) {
           try {
             const token = session.access_token;
             const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-            isRecovery = payload.amr?.some((a: any) => a.method === 'recovery') ?? false;
+            isRecovery = payload.amr?.some((a: { method?: string }) => a.method === 'recovery') ?? false;
           } catch (e) {
             console.error('[Callback] Failed to parse JWT amr claim:', e);
           }

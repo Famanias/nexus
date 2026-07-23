@@ -147,6 +147,7 @@ export default function ReportsClient({ initialReports }: Props) {
         </Box>
       </Box>
 
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 4 }}>
           <StatCard title="Active OJTs" value={reports.length} subtitle="This period" icon={<PeopleIcon />} color="#6366f1" />

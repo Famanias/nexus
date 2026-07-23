@@ -58,7 +58,6 @@ interface DisplayRow {
 export default function UsersClient({ initialUsers }: { initialUsers: Profile[] }) {
   const [users, setUsers] = useState<Profile[]>(initialUsers);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   
@@ -81,7 +80,6 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
   const supabase = createClient();
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     try {
       // 1. Fetch profiles
       const { data } = await supabase
@@ -98,8 +96,6 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       }
     } catch (err) {
       console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
     }
   }, [supabase]);
 
@@ -141,8 +137,9 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
         setInviteDialogOpen(false);
         fetchUsers();
       }
-    } catch (err: any) {
-      setInviteError(err.message ?? 'An error occurred.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setInviteError(msg || 'An error occurred.');
     } finally {
       setInviteSubmitting(false);
     }
@@ -227,7 +224,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
         }
         fetchUsers();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
     }
   };
@@ -246,7 +243,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       } else {
         fetchUsers();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
     } finally {
       setRevokeDialog(null);
@@ -279,7 +276,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
     if (inv.status === 'accepted') return; // Profile already exists
 
     let statusText = 'Pending Invite';
-    let statusColor: any = 'warning';
+    let statusColor: DisplayRow['statusColor'] = 'warning';
 
     if (inv.status === 'expired') {
       statusText = 'Expired Invite';

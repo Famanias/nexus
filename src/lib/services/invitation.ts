@@ -107,7 +107,7 @@ export async function getInvitationByToken(
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as any;
+  return data as unknown as (Invitation & { organization: { name: string } });
 }
 
 export async function validateInvitation(

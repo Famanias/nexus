@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { createClient as createSupabaseAdmin, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { revokeInvitation } from '@/lib/services/invitation';
 import { sendInvitationEmail } from '@/lib/services/email';
@@ -13,7 +13,7 @@ function getAdminClient() {
   return createSupabaseAdmin(url, key);
 }
 
-async function getCallerAdmin(supabase: any) {
+async function getCallerAdmin(supabase: SupabaseClient) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data: profile } = await supabase
