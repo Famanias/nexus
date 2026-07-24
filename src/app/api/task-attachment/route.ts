@@ -3,10 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 
 // Service-role client so we can sign URLs from the private bucket.
 // This route is server-side only — the key is never sent to the client.
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('Supabase configuration is missing');
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 export async function GET(req: NextRequest) {
   const path = req.nextUrl.searchParams.get('path');
