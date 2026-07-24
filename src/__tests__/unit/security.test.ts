@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { generateNonce } from '@/lib/security/nonce';
 import { buildCspDirectives, serializeCsp } from '@/lib/security/csp';
 import { isHtmlRequest, applySecurityHeaders } from '@/lib/security/headers';

@@ -56,11 +56,12 @@ export async function GET(request: Request) {
       if (user) {
         // Fetch profile using admin client to bypass RLS token propagation timing during code exchange
         const adminSupabase = await createAdminClient();
-        let { data: profile, error: profileError } = await adminSupabase
+        const { data: initialProfile, error: profileError } = await adminSupabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
+        let profile = initialProfile;
 
         if (profileError || !profile) {
           console.error('Missing or inaccessible profile on callback:', profileError);
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
               id: user.id,
               email: user.email ?? '',
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-              role: (user.user_metadata?.role as any) || 'ojt',
+              role: (user.user_metadata?.role as string) || 'ojt',
             })
             .select('*')
             .single();

@@ -90,7 +90,7 @@ export async function proxy(request: NextRequest) {
     '/auth/reset-password',
   ];
 
-  let finalResponse = supabaseResponse;
+  const finalResponse = supabaseResponse;
 
   if (publicRoutes.includes(pathname) || isInviteRoute) {
     if (user && !isInviteRoute && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
