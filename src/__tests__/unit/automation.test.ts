@@ -146,7 +146,12 @@ describe('Automation Layer — Gateway Client (emitEvent)', () => {
   });
 
   it('returns error if event name is not registered', async () => {
-    const res = await emitEvent('unregistered.event.name' as any, 'usr-1', {});
+    const res = await emitEvent(
+      // Use a string that won't match any registered event types
+      'unregistered.event.name' as any,
+      'usr-1',
+      {}
+    );
     expect(res.success).toBe(false);
     expect(res.error).toContain('Unknown event');
   });
@@ -183,7 +188,9 @@ describe('Automation Layer — Gateway Client (emitEvent)', () => {
     expect(res.success).toBe(false);
     expect(res.error).toContain('Network connection refused');
     expect(deadLetterSpy).toHaveBeenCalledTimes(1);
-    expect((deadLetterSpy.mock.calls[0] as any)[0].event).toBe('user.invited');
+    expect(deadLetterSpy.mock.calls[0]).toBeDefined();
+    const deadLetterCall = deadLetterSpy.mock.calls[0][0];
+    expect(deadLetterCall).toHaveProperty('event', 'user.invited');
   });
 });
 
