@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:workflows": "node scripts/test-n8n.mjs",
     "worker": "tsx scripts/railway-worker.ts"
   },
   "dependencies": {

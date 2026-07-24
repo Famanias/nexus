@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withRetry } from '@/lib/automation/retry';
 import { parseAutomationRequest } from '@/lib/automation/workflow-request';
+import { emitEvent } from '@/lib/automation/client';
+import * as loggerDb from '@/lib/automation/logger-db';
 import { NextRequest } from 'next/server';
 
 describe('Automation Layer — Retry Utility (withRetry)', () => {
@@ -111,3 +113,77 @@ describe('Automation Layer — Workflow Request Parser (parseAutomationRequest)'
     expect(res).toHaveProperty('event', 'user.created');
   });
 });
+
+describe('Automation Layer — Gateway Client (emitEvent)', () => {
+  const origEnv = { ...process.env };
+  let logResultSpy: ReturnType<typeof vi.spyOn>;
+  let deadLetterSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    logResultSpy = vi.spyOn(loggerDb, 'logAutomationResult').mockResolvedValue(undefined);
+    deadLetterSpy = vi.spyOn(loggerDb, 'writeDeadLetter').mockResolvedValue(undefined);
+    process.env.AUTOMATION_ENABLED = 'true';
+    process.env.N8N_URL = 'http://n8n-test.local:5678';
+    process.env.N8N_API_KEY = 'test-api-key-999';
+    process.env.AUTOMATION_TIMEOUT = '1000';
+    process.env.AUTOMATION_RETRIES = '1';
+  });
+
+  afterEach(() => {
+    process.env = { ...origEnv };
+    vi.restoreAllMocks();
+  });
+
+  it('returns early with success if AUTOMATION_ENABLED is false', async () => {
+    process.env.AUTOMATION_ENABLED = 'false';
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    const res = await emitEvent('user.created', 'usr-1', { email: 'a@b.com' });
+    expect(res.success).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns error if event name is not registered', async () => {
+    const res = await emitEvent('unregistered.event.name' as any, 'usr-1', {});
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Unknown event');
+  });
+
+  it('builds valid envelope, sets headers, and sends request to n8n webhook', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ received: true }), { status: 200 })
+    );
+
+    const res = await emitEvent('task.created', 'actor-123', { title: 'Test Task' }, 'org-456');
+
+    expect(res.success).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    const [url, opts] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://n8n-test.local:5678/webhook/events');
+    expect((opts?.headers as Record<string, string>)['X-Automation-Key']).toBe('test-api-key-999');
+    expect((opts?.headers as Record<string, string>)['X-Event-Name']).toBe('task.created');
+
+    const body = JSON.parse(opts?.body as string);
+    expect(body.event).toBe('task.created');
+    expect(body.actorId).toBe('actor-123');
+    expect(body.organizationId).toBe('org-456');
+    expect(body.payload).toEqual({ title: 'Test Task' });
+    expect(logResultSpy).toHaveBeenCalled();
+  });
+
+  it('writes to dead-letter queue when gateway request repeatedly fails', async () => {
+    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network connection refused'));
+
+    const res = await emitEvent('user.invited', 'actor-1', { email: 'invitee@test.com' });
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Network connection refused');
+    expect(deadLetterSpy).toHaveBeenCalledTimes(1);
+    expect((deadLetterSpy.mock.calls[0] as any)[0].event).toBe('user.invited');
+  });
+});
+
