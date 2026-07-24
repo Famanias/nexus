@@ -148,7 +148,7 @@ describe('Automation Layer — Gateway Client (emitEvent)', () => {
   it('returns error if event name is not registered', async () => {
     const res = await emitEvent(
       // Use a string that won't match any registered event types
-      'unregistered.event.name' as any,
+      'unregistered.event.name' as unknown as Parameters<typeof emitEvent>[0],
       'usr-1',
       {}
     );
