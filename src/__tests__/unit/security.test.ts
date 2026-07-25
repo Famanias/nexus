@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateNonce } from '@/lib/security/nonce';
 import { buildCspDirectives, serializeCsp } from '@/lib/security/csp';
 import { isHtmlRequest, applySecurityHeaders } from '@/lib/security/headers';
@@ -6,6 +6,16 @@ import { parseCspReportPayload } from '@/lib/security/report';
 import { NextRequest, NextResponse } from 'next/server';
 
 describe('Application Security Framework', () => {
+  const originalEnv = process.env.CSP_MODE;
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.CSP_MODE = originalEnv;
+    } else {
+      delete process.env.CSP_MODE;
+    }
+  });
+
   describe('Nonce Generator', () => {
     it('generates unique nonces on every invocation', () => {
       const nonce1 = generateNonce();
@@ -84,6 +94,47 @@ describe('Application Security Framework', () => {
       expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
       expect(response.headers.has('Content-Security-Policy-Report-Only') || response.headers.has('Content-Security-Policy')).toBe(true);
       expect(response.headers.get('Report-To')).toContain('csp-endpoint');
+    });
+
+    it('emits Content-Security-Policy when CSP_MODE=enforce and Report-Only when CSP_MODE=report-only', () => {
+      const reqEnforce = new NextRequest('http://localhost:3000/dashboard', { headers: { accept: 'text/html' } });
+      process.env.CSP_MODE = 'enforce';
+      const resEnforce = applySecurityHeaders(reqEnforce, NextResponse.next()).response;
+      expect(resEnforce.headers.has('Content-Security-Policy')).toBe(true);
+      expect(resEnforce.headers.has('Content-Security-Policy-Report-Only')).toBe(false);
+
+      const reqReportOnly = new NextRequest('http://localhost:3000/dashboard', { headers: { accept: 'text/html' } });
+      process.env.CSP_MODE = 'report-only';
+      const resReportOnly = applySecurityHeaders(reqReportOnly, NextResponse.next()).response;
+      expect(resReportOnly.headers.has('Content-Security-Policy-Report-Only')).toBe(true);
+      expect(resReportOnly.headers.has('Content-Security-Policy')).toBe(false);
+    });
+
+    it('verifies policy string body identity between enforce and report-only modes', () => {
+      const reqEnforce = new NextRequest('http://localhost:3000/dashboard', { headers: { accept: 'text/html' } });
+      process.env.CSP_MODE = 'enforce';
+      const resEnforce = applySecurityHeaders(reqEnforce, NextResponse.next()).response;
+      const enforcePolicy = resEnforce.headers.get('Content-Security-Policy');
+
+      const reqReportOnly = new NextRequest('http://localhost:3000/dashboard', { headers: { accept: 'text/html' } });
+      process.env.CSP_MODE = 'report-only';
+      const resReportOnly = applySecurityHeaders(reqReportOnly, NextResponse.next()).response;
+      const reportOnlyPolicy = resReportOnly.headers.get('Content-Security-Policy-Report-Only');
+
+      // The policy directives, report-uri, and report-to must be identical; only the header key changes
+      expect(enforcePolicy?.replace(/'nonce-[^']+'/g, "'nonce-test'")).toBe(
+        reportOnlyPolicy?.replace(/'nonce-[^']+'/g, "'nonce-test'")
+      );
+    });
+
+    it('defaults to report-only when CSP_MODE is missing or invalid', () => {
+      delete process.env.CSP_MODE;
+      const resDefault = applySecurityHeaders(new NextRequest('http://localhost:3000/dashboard'), NextResponse.next()).response;
+      expect(resDefault.headers.has('Content-Security-Policy-Report-Only')).toBe(true);
+
+      process.env.CSP_MODE = 'invalid-mode';
+      const resInvalid = applySecurityHeaders(new NextRequest('http://localhost:3000/dashboard'), NextResponse.next()).response;
+      expect(resInvalid.headers.has('Content-Security-Policy-Report-Only')).toBe(true);
     });
   });
 
