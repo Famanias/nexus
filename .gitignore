@@ -68,3 +68,7 @@ Thumbs.db
 
 /docs/*
 scripts/sync-n8n.mjs
+
+
+lighthouse-report.report.html
+lighthouse-report.report.json

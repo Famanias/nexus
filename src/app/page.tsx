@@ -24,7 +24,7 @@ export default function Home() {
       </header>
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="landing-hero">
+      <section className="landing-hero" id="main-content">
         <div className="landing-container hero-content">
           <div className="hero-badge">
             <span className="hero-badge-dot" />
@@ -62,7 +62,7 @@ export default function Home() {
           <div className="feature-grid">
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
                   <circle cx="12" cy="11" r="3" />
                 </svg>
@@ -72,7 +72,7 @@ export default function Home() {
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" />
                 </svg>
               </div>
@@ -81,7 +81,7 @@ export default function Home() {
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <rect x="3" y="4" width="18" height="16" rx="2" />
                   <path strokeLinecap="round" d="M8 4v16M16 4v16" />
                 </svg>
@@ -91,7 +91,7 @@ export default function Home() {
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m3 6V7m3 10v-3m-9 6h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -100,7 +100,7 @@ export default function Home() {
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
@@ -109,7 +109,7 @@ export default function Home() {
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <circle cx="6" cy="6" r="2.2" /><circle cx="18" cy="6" r="2.2" /><circle cx="12" cy="18" r="2.2" />
                   <path strokeLinecap="round" d="M7.8 7.3L11 16.5M16.2 7.3L13 16.5M8.2 6h7.6" />
                 </svg>
@@ -131,33 +131,33 @@ export default function Home() {
             <div className="roles-connector" />
             <div className="role-card">
               <div className="role-marker">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m3 6V7m3 10v-3M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
               <span className="role-tag">Trainee</span>
-              <h4>OJT</h4>
+              <h3>OJT</h3>
               <p>Clocks in and out with GPS verification, works tasks on the kanban board, and tracks hours toward completion.</p>
             </div>
             <div className="role-card">
               <div className="role-marker">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12C3.8 7.9 7.6 5 12 5s8.2 2.9 9.5 7c-1.3 4.1-5.1 7-9.5 7s-8.2-2.9-9.5-7z" />
                 </svg>
               </div>
               <span className="role-tag">Oversight</span>
-              <h4>Supervisor</h4>
+              <h3>Supervisor</h3>
               <p>Reviews logs, approves attendance, and monitors every assigned trainee&apos;s progress from one dashboard.</p>
             </div>
             <div className="role-card">
               <div className="role-marker">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-3z" />
                 </svg>
               </div>
               <span className="role-tag">System</span>
-              <h4>Administrator</h4>
+              <h3>Administrator</h3>
               <p>Provisions accounts, configures the programme, and generates the reports that leave the building.</p>
             </div>
           </div>
