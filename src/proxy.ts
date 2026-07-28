@@ -88,6 +88,10 @@ export async function proxy(request: NextRequest) {
     '/contact',
     '/forgot-password',
     '/auth/reset-password',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/manifest.webmanifest',
+    '/manifest.json',
   ];
 
   const finalResponse = supabaseResponse;
@@ -122,6 +126,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|manifest.json|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest|xml|txt)$).*)',
   ],
 };

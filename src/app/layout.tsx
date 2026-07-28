@@ -20,7 +20,7 @@ const blanka = localFont({
   display: "swap",
 });
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nexus-ojt.vercel.app';
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.nexxus.lol';
 
 export const viewport: Viewport = {
   themeColor: '#000000',

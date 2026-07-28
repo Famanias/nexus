@@ -72,3 +72,5 @@ scripts/sync-n8n.mjs
 
 lighthouse-report.report.html
 lighthouse-report.report.json
+lighthouse-report-live.report.html
+lighthouse-report-live.report.json
