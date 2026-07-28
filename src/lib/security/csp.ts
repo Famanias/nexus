@@ -43,7 +43,7 @@ export function buildCspDirectives(options: CspOptions): CspDirectives {
   const directives: CspDirectives = {
     'default-src': ["'self'"],
     'script-src': scriptSrc,
-    'style-src': ["'self'", "'unsafe-inline'", `'nonce-${options.nonce}'`, ...origins.styleSrc],
+    'style-src': ["'self'", "'unsafe-inline'", ...origins.styleSrc],
     'img-src': ["'self'", 'blob:', 'data:', ...origins.imgSrc],
     'font-src': ["'self'", 'data:', ...origins.fontSrc],
     'connect-src': ["'self'", ...origins.connectSrc],

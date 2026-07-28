@@ -50,6 +50,8 @@ describe('Application Security Framework', () => {
       });
 
       expect(directives['script-src']).not.toContain("'unsafe-eval'");
+      expect(directives['style-src']).toContain("'unsafe-inline'");
+      expect(directives['style-src']).not.toContain("'nonce-test-nonce-456'");
       expect(directives['upgrade-insecure-requests']).toBe(true);
     });
 
