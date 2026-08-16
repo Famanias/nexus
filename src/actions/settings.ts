@@ -33,25 +33,6 @@ export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ erro
   return {};
 }
 
-export async function saveTimezone(id: string, timezone: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // If we don't have an id, update the single row without filtering
-  let query = supabase
-    .from('site_settings')
-    .update({ timezone, updated_by: user?.id });
-
-  if (id) {
-    query = query.eq('id', id) as typeof query;
-  }
-
-  const { error } = await query;
-
-  if (error) return { error: error.message };
-  return {};
-}
-
 export async function regenerateInviteCode(): Promise<{ code?: string; error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

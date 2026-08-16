@@ -38,7 +38,6 @@ export interface SiteSettings {
   radius_meters: number;
   address?: string;
   require_location_verification: boolean;
-  timezone?: string;
   archive_retention_days?: number;
   updated_by?: string;
   updated_at: string;

@@ -10,7 +10,7 @@ export default async function AdminDashboard() {
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
-  const [{ count: ojts }, { count: supervisors }, { data: todayAtt }, { data: allHours }, { data: attendance }, { data: settings }] =
+  const [{ count: ojts }, { count: supervisors }, { data: todayAtt }, { data: allHours }, { data: attendance }] =
     await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'ojt').eq('is_active', true),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'supervisor').eq('is_active', true),
@@ -22,7 +22,6 @@ export default async function AdminDashboard() {
         .gte('date', monthStart)
         .lte('date', monthEnd)
         .order('date', { ascending: false }),
-      supabase.from('site_settings').select('*').limit(1).maybeSingle(),
     ]);
 
   const total_hours = (allHours ?? []).reduce((a: number, r: { total_hours: number | null }) => a + (r.total_hours ?? 0), 0);
@@ -36,8 +35,6 @@ export default async function AdminDashboard() {
         total_hours_all: total_hours,
       }}
       initialAttendance={attendance ?? []}
-      settingsId={settings?.id ?? ''}
-      initialTimezone={settings?.timezone ?? 'UTC'}
     />
   );
 }
