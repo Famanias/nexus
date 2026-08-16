@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --radius: 10px;
+  --border-radius: 10px;
+}
+
 *,
 *::before,
 *::after {

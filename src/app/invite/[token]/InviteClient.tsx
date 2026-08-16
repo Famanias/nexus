@@ -88,14 +88,14 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
     return (
       <AuthPageShell>
         <AuthCard title="Invitation Invalid" subtitle="We were unable to process this invitation.">
-          <Alert severity="error" icon={<ErrorIcon />} sx={{ mb: 3, borderRadius: 3 }}>
+          <Alert severity="error" icon={<ErrorIcon />} sx={{ mb: 3 }}>
             {initialError}
           </Alert>
           <Button
             variant="outlined"
             fullWidth
             onClick={() => router.push('/')}
-            sx={{ borderRadius: 2.5, textTransform: 'none', py: 1.2, fontWeight: 600 }}
+            sx={{ textTransform: 'none', py: 1.2, fontWeight: 600 }}
           >
             Go to Homepage
           </Button>
@@ -155,7 +155,7 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
     return (
       <AuthPageShell>
         <AuthCard title="Email Mismatch" subtitle="The active account does not match the invitation email.">
-          <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
+          <Alert severity="warning" sx={{ mb: 3 }}>
             <Typography variant="body2" fontWeight={600} gutterBottom>
               Account Email Mismatch
             </Typography>
@@ -174,7 +174,7 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SignOutIcon />}
               fullWidth
-              sx={{ borderRadius: 2.5, textTransform: 'none', py: 1.2, fontWeight: 600 }}
+              sx={{ textTransform: 'none', py: 1.2, fontWeight: 600 }}
             >
               Sign Out of {userEmail}
             </Button>
@@ -182,7 +182,7 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
               variant="outlined"
               onClick={() => router.push(`/dashboard`)}
               fullWidth
-              sx={{ borderRadius: 2.5, textTransform: 'none', py: 1.2, fontWeight: 600 }}
+              sx={{ textTransform: 'none', py: 1.2, fontWeight: 600 }}
             >
               Go to Dashboard
             </Button>
@@ -199,7 +199,7 @@ export default function InviteClient({ token, invitation, userEmail, inviterName
         title={`Join ${invitation.organization.name}`}
         subtitle={`${inviterName} has invited you to join their organization.`}
       >
-        <Card variant="outlined" sx={{ mb: 4, borderRadius: 3, bgcolor: '#fafafa', borderColor: '#eaeaea' }}>
+        <Card variant="outlined" sx={{ mb: 4, bgcolor: 'action.hover', borderColor: 'divider' }}>
           <CardContent sx={{ p: 2.5 }}>
             <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
               Invitation Details

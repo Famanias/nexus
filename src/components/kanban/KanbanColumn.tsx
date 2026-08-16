@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
+import { BORDER_RADIUS, BORDER_RADIUS_PX } from '@/lib/constants/theme';
 import type { KanbanColumn, KanbanTask } from '@/types';
 import KanbanTaskCard from './KanbanTask';
 
@@ -101,7 +102,7 @@ export default function KanbanColumnComponent({
     >
       <Card
         sx={{
-          borderRadius: 3,
+          borderRadius: 1,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
@@ -119,7 +120,7 @@ export default function KanbanColumnComponent({
           sx={{
             px: 2,
             py: 1.5,
-            borderRadius: '12px 12px 0 0',
+            borderRadius: `${BORDER_RADIUS_PX} ${BORDER_RADIUS_PX} 0 0`,
             background: `linear-gradient(135deg, ${column.color}22, ${column.color}10)`,
             borderBottom: `2px solid ${column.color}30`,
             display: 'flex',

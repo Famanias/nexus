@@ -380,7 +380,7 @@ export default function RegisterForm() {
               mb: 2.5,
               p: 2,
               bgcolor: 'rgba(16, 185, 129, 0.1)',
-              borderRadius: 3,
+              borderRadius: 1,
               border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               alignItems: 'center',

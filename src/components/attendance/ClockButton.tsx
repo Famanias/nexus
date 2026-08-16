@@ -187,8 +187,8 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
   const locStatus = locationStatus();
 
   return (
-    <Card sx={{ borderRadius: 3, overflow: 'hidden' }}>
-      {/* Time display */}
+    <Card sx={{ overflow: 'hidden' }}>
+      {/* Header Banner */}
       <Box
         sx={{
           background: isClockedIn

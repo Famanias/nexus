@@ -164,10 +164,10 @@ export default function SettingsClient({
 
       {/* Organization Card */}
       {organization && (
-        <Card sx={{ borderRadius: 3, mb: 3 }}>
+        <Card sx={{ mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
                 <OrgIcon />
               </Box>
               <Box>
@@ -214,11 +214,11 @@ export default function SettingsClient({
         </Card>
       )}
       {/* Attendance Verification Card */}
-      <Card sx={{ borderRadius: 3, mb: 3 }}>
+      <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
                 <GpsIcon />
               </Box>
               <Box>
@@ -241,15 +241,15 @@ export default function SettingsClient({
       </Card>
 
       {!form.require_location_verification && (
-        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+        <Alert severity="warning" sx={{ mb: 3 }}>
           GPS verification is currently disabled. Office location and radius settings are ignored until GPS verification is enabled again.
         </Alert>
       )}
 
-      <Card sx={{ borderRadius: 3, mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
+      <Card sx={{ mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+            <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#6366f120', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
               <LocationIcon />
             </Box>
             <Box>
@@ -335,10 +335,10 @@ export default function SettingsClient({
       </Card>
 
       {/* Radius Card */}
-      <Card sx={{ borderRadius: 3, mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
+      <Card sx={{ mb: 3, opacity: form.require_location_verification ? 1 : 0.7 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#f59e0b20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+            <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#f59e0b20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
               <RadiusIcon />
             </Box>
             <Box>

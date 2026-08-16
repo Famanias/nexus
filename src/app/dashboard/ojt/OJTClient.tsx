@@ -41,7 +41,6 @@ export default function OJTClient({ profile, initialTodayRecord, initialSummary,
           severity="info"
           sx={{
             mb: 3,
-            borderRadius: 3,
             bgcolor: 'rgba(99, 102, 241, 0.05)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             color: 'text.primary',

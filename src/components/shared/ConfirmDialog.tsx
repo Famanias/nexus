@@ -44,7 +44,6 @@ export default function ConfirmDialog({
       aria-describedby="confirm-dialog-description"
       PaperProps={{
         sx: {
-          borderRadius: 3,
           p: 1,
         },
       }}

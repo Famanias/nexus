@@ -109,7 +109,7 @@ export default function SupervisorClient({ summaries, stats }: Props) {
       </Grid>
 
       {/* OJT Progress Table */}
-      <Card sx={{ borderRadius: 3, mb: 3 }}>
+      <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6" fontWeight={700}>OJT Progress Overview</Typography>

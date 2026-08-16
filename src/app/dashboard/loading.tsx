@@ -8,11 +8,11 @@ export default function DashboardLoading() {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[1, 2, 3, 4].map((i) => (
           <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={i}>
-            <Skeleton variant="rounded" height={120} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rounded" height={120} sx={{ borderRadius: 1 }} />
           </Grid>
         ))}
       </Grid>
-      <Skeleton variant="rounded" height={400} sx={{ borderRadius: 3 }} />
+      <Skeleton variant="rounded" height={400} sx={{ borderRadius: 1 }} />
     </Box>
   );
 }

@@ -344,7 +344,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       </Box>
 
       {/* Filters */}
-      <Card sx={{ borderRadius: 3, mb: 2 }}>
+      <Card sx={{ mb: 2 }}>
         <CardContent sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
           <TextField
             size="small"
@@ -374,7 +374,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       </Card>
 
       {/* Table */}
-      <Card sx={{ borderRadius: 3 }}>
+      <Card>
         <TableContainer>
           <Table>
             <TableHead sx={{ bgcolor: 'action.hover' }}>

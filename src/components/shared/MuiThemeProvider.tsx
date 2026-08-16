@@ -4,6 +4,10 @@ import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
+import { BORDER_RADIUS } from '@/lib/constants/theme';
+
+export { BORDER_RADIUS };
+
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -53,7 +57,7 @@ const theme = createTheme({
     fontFamily: 'var(--font-geist-sans), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS,
   },
   components: {
     MuiButton: {
@@ -61,13 +65,14 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
-          borderRadius: 10,
+          borderRadius: BORDER_RADIUS,
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
+          borderRadius: BORDER_RADIUS,
           backgroundImage: 'none',
           backgroundColor: '#121215',
           border: '1px solid #27272a',
@@ -78,6 +83,7 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
+          borderRadius: BORDER_RADIUS,
           backgroundImage: 'none',
         },
       },
@@ -85,6 +91,7 @@ const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
+          borderRadius: BORDER_RADIUS,
           backgroundColor: '#121215',
           border: '1px solid #27272a',
           backgroundImage: 'none',
@@ -94,16 +101,31 @@ const theme = createTheme({
     MuiMenu: {
       styleOverrides: {
         paper: {
+          borderRadius: BORDER_RADIUS,
           backgroundColor: '#16161a',
           border: '1px solid #27272a',
           backgroundImage: 'none',
         },
       },
     },
+    MuiPopover: {
+      styleOverrides: {
+        paper: {
+          borderRadius: BORDER_RADIUS,
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: BORDER_RADIUS,
+        },
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: BORDER_RADIUS,
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: '#27272a',
           },
@@ -113,6 +135,13 @@ const theme = createTheme({
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: '#6366f1',
           },
+        },
+      },
+    },
+    MuiSnackbarContent: {
+      styleOverrides: {
+        root: {
+          borderRadius: BORDER_RADIUS,
         },
       },
     },

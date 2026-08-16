@@ -99,7 +99,7 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
   };
 
   return (
-    <Card sx={{ borderRadius: 3 }}>
+    <Card>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
           <Typography variant="h6" fontWeight={700}>Attendance Records</Typography>

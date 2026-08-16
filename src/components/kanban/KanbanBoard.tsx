@@ -825,7 +825,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                     width: 320,
                     minWidth: 320,
                     height: 120,
-                    borderRadius: 3,
+                    borderRadius: 1,
                     border: '2px dashed',
                     borderColor: 'divider',
                     bgcolor: 'action.hover',
@@ -900,7 +900,6 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
         onClose={() => setDeleteColConfirm(null)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <WarningIcon color="warning" />

@@ -160,7 +160,7 @@ export default function ReportsClient({ initialReports }: Props) {
         </Grid>
       </Grid>
 
-      <Card sx={{ borderRadius: 3 }}>
+      <Card>
         <CardContent sx={{ p: 0 }}>
           <TableContainer>
             <Table>

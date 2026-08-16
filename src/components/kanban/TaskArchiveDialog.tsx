@@ -146,7 +146,7 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
     columns.find((c) => c.id === colId)?.color ?? '#6366f1';
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <ArchiveIcon sx={{ color: '#6366f1' }} />

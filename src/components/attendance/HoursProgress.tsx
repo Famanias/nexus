@@ -17,7 +17,7 @@ export default function HoursProgress({ summary }: Props) {
   const color = pct >= 100 ? '#22c55e' : pct >= 75 ? '#6366f1' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
   return (
-    <Card sx={{ borderRadius: 3, height: '100%' }}>
+    <Card sx={{ height: '100%' }}>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
           <Box

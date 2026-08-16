@@ -88,7 +88,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           sx={{
             minWidth: 280,
             maxWidth: 480,
-            borderRadius: 2,
             fontWeight: 500,
             alignItems: 'center',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',

@@ -9,7 +9,7 @@ interface AuthCardProps {
 export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
     <Box sx={{ width: '100%', maxWidth: 600 }}>
-      <Card sx={{ borderRadius: 3 }}>
+      <Card>
         <CardContent sx={{ p: { xs: 3, sm: 6 } }}>
           <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5, letterSpacing: '-0.02em' }}>
             {title}

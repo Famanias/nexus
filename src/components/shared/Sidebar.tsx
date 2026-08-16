@@ -356,7 +356,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                     px: 2.5,
                     mx: 1,
                     mb: 0.5,
-                    borderRadius: 2,
+                    borderRadius: 1,
                     bgcolor: isActive(item.path) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
                     color: isActive(item.path) ? 'primary.light' : 'text.secondary',
                     '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' },
@@ -420,7 +420,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                   px: 2.5,
                   mx: 1,
                   mb: 0.5,
-                  borderRadius: 2,
+                  borderRadius: 1,
                   color: 'error.light',
                   '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
                 }}
@@ -445,7 +445,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                 justifyContent: collapsed ? 'center' : 'initial',
                 px: 2.5,
                 mx: 1,
-                borderRadius: 2,
+                borderRadius: 1,
                 color: 'error.light',
                 '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
               }}
@@ -469,11 +469,6 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           onClose={() => !promotingAndLeaving && setLastAdminDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-            }
-          }}
         >
           <DialogTitle component="div" sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>
             Promote Administrator Before Leaving
@@ -481,7 +476,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
           <DialogContent sx={{ p: 3 }}>
             {promotionError && (
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {promotionError}
               </Alert>
             )}
@@ -491,7 +486,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             </Typography>
 
             {eligibleMembers.length === 0 ? (
-              <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              <Alert severity="warning">
                 There are no other active members in this organization to promote. You cannot leave until you invite and onboard another member.
               </Alert>
             ) : (
