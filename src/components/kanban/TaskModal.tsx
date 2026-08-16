@@ -441,8 +441,8 @@ export default function TaskModal({
               <Box
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 1.5,
-                  p: 1.5, bgcolor: '#f8fafc', borderRadius: 2,
-                  border: '1px solid #e2e8f0',
+                  p: 1.5, bgcolor: 'action.hover', borderRadius: 2,
+                  border: '1px solid', borderColor: 'divider',
                 }}
               >
                 <Avatar src={currentUser.avatar_url} sx={{ width: 32, height: 32 }}>
@@ -473,8 +473,8 @@ export default function TaskModal({
                     key={att.id}
                     sx={{
                       display: 'flex', alignItems: 'center', gap: 1,
-                      p: 1.5, bg: '#f8fafc', borderRadius: 1.5,
-                      border: '1px solid #e2e8f0',
+                      p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5,
+                      border: '1px solid', borderColor: 'divider',
                     }}
                   >
                     {fileIcon(att.file_type)}
@@ -508,7 +508,7 @@ export default function TaskModal({
                   <Box
                     key={upload.id}
                     sx={{
-                      p: 1.5, borderRadius: 1.5, border: '1px solid #e2e8f0',
+                      p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'action.hover',
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: upload.status !== 'error' ? 0.5 : 0 }}>
@@ -518,25 +518,42 @@ export default function TaskModal({
                         <img
                           src={upload.previewUrl}
                           alt={upload.file.name}
-                          style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
                         />
                       ) : (
-                        fileIcon(getFileType(upload.file.type))
+                        fileIcon(upload.file.type.startsWith('image/') ? 'image' : 'file')
                       )}
-                      <Typography variant="body2" noWrap sx={{ flex: 1 }}>{upload.file.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(upload.file.size)}
-                      </Typography>
+
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" noWrap fontWeight={500}>{upload.file.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(upload.file.size)}
+                        </Typography>
+                      </Box>
+
+                      {/* Status indicator */}
+                      {upload.status === 'uploading' && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CircularProgress size={16} />
+                          <Typography variant="caption" color="text.secondary">{upload.progress}%</Typography>
+                        </Box>
+                      )}
+                      {upload.status === 'success' && (
+                        <Chip label="Uploaded" color="success" size="small" sx={{ height: 20, fontSize: 11 }} />
+                      )}
+                      {upload.status === 'error' && (
+                        <Chip label="Failed" color="error" size="small" sx={{ height: 20, fontSize: 11 }} />
+                      )}
+
+                      {/* Remove button */}
                       <IconButton size="small" onClick={() => removeUploadingFile(upload.id)}>
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Box>
-                    {upload.status === 'error' ? (
-                      <Typography variant="caption" color="error">{upload.error}</Typography>
-                    ) : upload.status === 'done' ? (
-                      <LinearProgress variant="determinate" value={100} color="success" sx={{ height: 4, borderRadius: 2 }} />
-                    ) : (
-                      <LinearProgress variant="indeterminate" sx={{ height: 4, borderRadius: 2 }} />
+
+                    {/* Progress bar */}
+                    {upload.status === 'uploading' && (
+                      <LinearProgress variant="determinate" value={upload.progress} sx={{ height: 4, borderRadius: 2 }} />
                     )}
                   </Box>
                 ))}
@@ -547,15 +564,16 @@ export default function TaskModal({
             <Box
               {...getRootProps()}
               sx={{
-                border: `2px dashed ${isDragActive ? '#6366f1' : '#e2e8f0'}`,
+                border: '2px dashed',
+                borderColor: isDragActive ? 'primary.main' : 'divider',
                 borderRadius: 2, p: 3, textAlign: 'center',
                 cursor: 'pointer', transition: 'all 0.2s',
-                bgcolor: isDragActive ? '#6366f108' : '#fafafa',
-                '&:hover': { borderColor: '#6366f1', bgcolor: '#6366f108' },
+                bgcolor: isDragActive ? 'rgba(99, 102, 241, 0.1)' : 'action.hover',
+                '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(99, 102, 241, 0.05)' },
               }}
             >
               <input {...getInputProps()} />
-              <AttachIcon sx={{ color: '#94a3b8', fontSize: 32, mb: 1 }} />
+              <AttachIcon sx={{ color: 'text.secondary', fontSize: 32, mb: 1 }} />
               <Typography variant="body2" color="text.secondary">
                 {isDragActive ? 'Drop files here...' : 'Drag & drop files here, or click to select'}
               </Typography>

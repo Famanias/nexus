@@ -16,10 +16,11 @@ export default function DashboardShell({ profile, children }: Props) {
       <Sidebar profile={profile} />
       <Box
         component="main"
+        id="main-content"
         sx={{
           flex: 1,
           overflow: 'auto',
-          minHeight: '100vh',
+          minHeight: '100dvh',
         }}
       >
         {children}

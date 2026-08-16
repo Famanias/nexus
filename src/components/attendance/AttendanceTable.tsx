@@ -126,7 +126,18 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
               />
             )}
             <Tooltip title="Export CSV">
-              <IconButton onClick={exportCSV} size="small" sx={{ bgcolor: '#f1f5f9' }}>
+              <IconButton
+                onClick={exportCSV}
+                size="small"
+                sx={{
+                  bgcolor: 'action.hover',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  color: 'text.primary',
+                  '&:hover': { bgcolor: 'action.selected' },
+                }}
+                aria-label="Export CSV"
+              >
                 <DownloadIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -135,14 +146,14 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
 
         <TableContainer>
           <Table size="small">
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: '#f8fafc' } }}>
-                <TableCell>Date</TableCell>
-                {showUser && <TableCell>Name</TableCell>}
-                <TableCell>Clock In</TableCell>
-                <TableCell>Clock Out</TableCell>
-                <TableCell>Hours</TableCell>
-                <TableCell>Status</TableCell>
+            <TableHead sx={{ bgcolor: 'action.hover' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Date</TableCell>
+                {showUser && <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Name</TableCell>}
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Clock In</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Clock Out</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Hours</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -159,8 +170,7 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
                 : filtered.map((record) => (
                     <TableRow
                       key={record.id}
-                      hover
-                      sx={{ '&:last-child td': { border: 0 } }}
+                      sx={{ '&:hover': { bgcolor: 'action.hover' }, '&:last-child td': { border: 0 } }}
                     >
                       <TableCell>{formatDate(record.date)}</TableCell>
                       {showUser && (

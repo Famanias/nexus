@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Box, Alert, Stack, Typography, CircularProgress } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import { createClient } from '@/lib/supabase/client';
@@ -15,25 +15,33 @@ import InputField from './InputField';
 import PasswordField from './PasswordField';
 import PrimaryButton from './PrimaryButton';
 import AuthFooter from './AuthFooter';
+import { validateEmail, validateRequired } from '@/lib/utils/validation';
 
 import { Turnstile } from '@marsidev/react-turnstile';
 
-// Integrated with wider (540px) layout to match RegisterForm and improve balance
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const turnstileRef = React.useRef<any>(null);
+  const turnstileRef = useRef<any>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const errorParam = searchParams.get('error');
   const next = searchParams.get('next');
   const supabase = createClient();
+
+  const emailError = emailTouched ? validateEmail(email) : null;
+  const passwordError = passwordTouched ? validateRequired(password, 'Password') : null;
 
   React.useEffect(() => {
     if (errorParam) {
@@ -44,6 +52,21 @@ export default function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setEmailTouched(true);
+    setPasswordTouched(true);
+
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validateRequired(password, 'Password');
+
+    if (emailValidation) {
+      emailInputRef.current?.focus();
+      return;
+    }
+
+    if (passwordValidation) {
+      passwordInputRef.current?.focus();
+      return;
+    }
 
     if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
       setError('Please complete the CAPTCHA verification.');
@@ -53,7 +76,7 @@ export default function LoginForm() {
     setLoading(true);
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
       options: captchaToken ? { captchaToken } : undefined,
     });
@@ -68,10 +91,10 @@ export default function LoginForm() {
 
     if (data.user) {
       const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
 
       const role = profile?.role ?? 'ojt';
       router.push(next || `/dashboard/${role}`);
@@ -104,12 +127,12 @@ export default function LoginForm() {
     <AuthPageShell>
       <AuthCard title="Welcome back" subtitle="Sign in to continue to Nexus.">
         {registered && (
-          <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }} role="status">
             Account created successfully! Please sign in.
           </Alert>
         )}
         {error && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} role="alert">
             {error}
           </Alert>
         )}
@@ -122,35 +145,61 @@ export default function LoginForm() {
           >
             {googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
           </SocialButton>
-          {/* Add more providers here, e.g.:
-              <SocialButton icon={<GitHubIcon />} onClick={handleGitHubSignIn}>
-                Continue with GitHub
-              </SocialButton> */}
         </Stack>
 
         <AuthDivider label="Or continue with email" />
 
-        <Box component="form" onSubmit={handleLogin}>
+        <Box component="form" onSubmit={handleLogin} noValidate>
           <InputField
+            id="login-email"
+            inputRef={emailInputRef}
             label="Email Address"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailTouched) setEmailTouched(true);
+            }}
+            onBlur={() => setEmailTouched(true)}
+            error={!!emailError}
+            helperText={emailError}
             required
+            autoComplete="email"
+            slotProps={{
+              htmlInput: {
+                'aria-invalid': !!emailError,
+                'aria-describedby': emailError ? 'login-email-helper-text' : undefined,
+              }
+            }}
           />
 
           <PasswordField
+            id="login-password"
+            inputRef={passwordInputRef}
             label="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (passwordTouched) setPasswordTouched(true);
+            }}
+            onBlur={() => setPasswordTouched(true)}
+            error={!!passwordError}
+            helperText={passwordError}
             required
             sx={{ mb: 1 }}
+            autoComplete="current-password"
+            slotProps={{
+              htmlInput: {
+                'aria-invalid': !!passwordError,
+                'aria-describedby': passwordError ? 'login-password-helper-text' : undefined,
+              }
+            }}
           />
 
           <Box sx={{ textAlign: 'right', mb: 3 }}>
             <Link
               href="/forgot-password"
-              style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none', color: '#6366f1' }}
+              style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none', color: '#818cf8' }}
             >
               Forgot password?
             </Link>
@@ -171,7 +220,7 @@ export default function LoginForm() {
                   setError('CAPTCHA verification failed. Please try again.');
                 }}
                 options={{
-                  theme: 'light',
+                  theme: 'dark',
                 }}
               />
             ) : (

@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { headers } from "next/headers";
 import "./globals.css";
 import MuiThemeProvider from "@/components/shared/MuiThemeProvider";
+import { ToastProvider } from "@/lib/context/ToastContext";
 import SkipToContent from "@/components/shared/SkipToContent";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Analytics } from "@vercel/analytics/next";
@@ -82,7 +83,9 @@ export default async function RootLayout({
         <SkipToContent />
         <AppRouterCacheProvider options={{ key: 'css', nonce }}>
           <MuiThemeProvider>
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </MuiThemeProvider>
         </AppRouterCacheProvider>
         <Analytics />

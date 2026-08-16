@@ -223,7 +223,9 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
               gap: 2,
               mb: 3,
               p: 2,
-              bgcolor: '#f8fafc',
+              bgcolor: 'action.hover',
+              border: '1px solid',
+              borderColor: 'divider',
               borderRadius: 2,
             }}
           >

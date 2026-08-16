@@ -128,18 +128,18 @@ export default function SupervisorClient({ summaries, stats }: Props) {
 
           <TableContainer>
             <Table>
-              <TableHead>
-                <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: '#f8fafc' } }}>
-                  <TableCell>Trainee</TableCell>
-                  <TableCell>Today</TableCell>
-                  <TableCell>Total Hours</TableCell>
-                  <TableCell>Progress</TableCell>
-                  <TableCell>Status</TableCell>
+              <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Trainee</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Today</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Total Hours</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Progress</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filtered.map((s) => (
-                  <TableRow key={s.profile.id} hover>
+                  <TableRow key={s.profile.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Avatar src={s.profile.avatar_url} sx={{ width: 36, height: 36 }}>

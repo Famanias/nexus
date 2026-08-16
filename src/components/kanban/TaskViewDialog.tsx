@@ -213,7 +213,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
           {allAssignees.length > 0 ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {allAssignees.map((a) => (
-                <Box key={a.user_id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #f1f5f9' }}>
+                <Box key={a.user_id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                   <Avatar src={a.profile?.avatar_url} sx={{ width: 32, height: 32, fontSize: 13 }}>
                     {a.profile?.full_name?.charAt(0)}
                   </Avatar>
@@ -228,7 +228,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
               ))}
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
               {task.assignee ? (
                 <>
                   <Avatar src={task.assignee.avatar_url} sx={{ width: 32, height: 32 }}>
@@ -275,8 +275,8 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
                     key={att.id}
                     sx={{
                       display: 'flex', alignItems: 'center', gap: 1,
-                      p: 1.5, bgcolor: '#f8fafc', borderRadius: 2,
-                      border: '1px solid #f1f5f9',
+                      p: 1.5, bgcolor: 'action.hover', borderRadius: 2,
+                      border: '1px solid', borderColor: 'divider',
                     }}
                   >
                     {att.file_type === 'image' ? (
