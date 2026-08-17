@@ -15,12 +15,12 @@ import {
 } from '@mui/icons-material';
 import { useLocation } from '@/lib/hooks/useLocation';
 import { createClient } from '@/lib/supabase/client';
-import { isWithinRadius } from '@/lib/utils/distance';
 import { formatTime, formatHours } from '@/lib/utils/format';
 import { Attendance, SiteSettings } from '@/types';
 import { format } from 'date-fns';
 import { useAuth } from '@/lib/context/AuthContext';
 import { emitClientEvent } from '@/lib/automation/client-emitter';
+import { clockIn, clockOut } from '@/actions/attendance';
 
 interface Props {
   userId: string;
@@ -69,7 +69,6 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
     const isLocationRequired = isPersonalMode ? false : (siteSettings?.require_location_verification ?? true);
     let lat: number | null = null;
     let lng: number | null = null;
-    let distance: number | null = null;
 
     if (isLocationRequired) {
       // Get current location
@@ -83,27 +82,6 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
 
       lat = loc.latitude;
       lng = loc.longitude;
-
-      // Verify location for OJT
-      if (siteSettings) {
-        const { allowed, distance: calculatedDistance } = isWithinRadius(
-          lat,
-          lng,
-          siteSettings.latitude,
-          siteSettings.longitude,
-          siteSettings.radius_meters
-        );
-
-        if (!allowed) {
-          setError(
-            `You are ${Math.round(calculatedDistance)}m away from the office. ` +
-            `You must be within ${siteSettings.radius_meters}m to clock in/out.`
-          );
-          setLoading(false);
-          return;
-        }
-        distance = Math.round(calculatedDistance);
-      }
     }
 
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -117,23 +95,16 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         return;
       }
 
-      const { error: insertError } = await supabase.from('attendance').insert({
-        user_id: userId,
-        clock_in: new Date().toISOString(),
-        clock_in_latitude: lat,
-        clock_in_longitude: lng,
-        clock_in_distance_meters: distance,
-        date: today,
-      });
+      const result = await clockIn({ latitude: lat, longitude: lng });
 
-      if (insertError) {
-        setError(insertError.message);
+      if (result.error) {
+        setError(result.error);
       } else {
         setSuccess('Successfully clocked in! Have a productive day.');
         // Emit attendance.clocked_in event
         emitClientEvent('attendance.clocked_in', {
           userId,
-          clockIn: new Date().toISOString(),
+          clockIn: result.data?.clock_in,
           date: today,
           latitude: lat,
           longitude: lng,
@@ -142,31 +113,25 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
       }
     } else {
       // CLOCK OUT
-      const clockOut = new Date();
-      const clockIn = new Date(todayRecord!.clock_in!);
-      const totalHours = (clockOut.getTime() - clockIn.getTime()) / 3600000;
+      const result = await clockOut({
+        attendanceId: todayRecord!.id,
+        latitude: lat,
+        longitude: lng,
+      });
 
-      const { error: updateError } = await supabase
-        .from('attendance')
-        .update({
-          clock_out: clockOut.toISOString(),
-          clock_out_latitude: lat,
-          clock_out_longitude: lng,
-          clock_out_distance_meters: distance,
-          total_hours: totalHours,
-        })
-        .eq('id', todayRecord!.id);
-
-      if (updateError) {
-        setError(updateError.message);
+      if (result.error) {
+        setError(result.error);
       } else {
-        setSuccess(`Successfully clocked out! You worked ${formatHours(totalHours)} today.`);
+        const totalHours = result.data?.total_hours;
+        setSuccess(
+          `Successfully clocked out! You worked ${formatHours(totalHours ?? 0)} today.`
+        );
         // Emit attendance.clocked_out event
         emitClientEvent('attendance.clocked_out', {
           attendanceId: todayRecord!.id,
           userId,
           clockIn: todayRecord!.clock_in!,
-          clockOut: clockOut.toISOString(),
+          clockOut: result.data?.clock_out,
           totalHours,
           date: today,
         });
