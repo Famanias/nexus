@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar, AvatarGroup,
-  Chip, IconButton, Menu, MenuItem, ListItemIcon, Tooltip, Button, CircularProgress
+  Chip, IconButton, Menu, MenuItem, ListItemIcon, Tooltip, Button,
+  CircularProgress, Divider,
 } from '@mui/material';
 import {
   MoreVert as MoreIcon,
@@ -14,11 +15,17 @@ import {
   HourglassEmpty as PendingIcon,
   PersonAdd as VolunteerIcon,
   TaskAlt as TaskAltIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
+  DriveFileMove as MoveIcon,
 } from '@mui/icons-material';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isBefore, startOfDay } from 'date-fns';
 import { KanbanTask } from '@/types';
 import { formatDate, priorityColor } from '@/lib/utils/format';
+import { SHADOWS } from '@/lib/constants/theme';
+import { useToast } from '@/lib/context/ToastContext';
 
 interface Props {
   task: KanbanTask;
@@ -26,16 +33,34 @@ interface Props {
   isDragging?: boolean;
   hasPendingInvitation?: boolean;
   canVolunteer?: boolean;
+  availableColumns?: { id: string; title: string }[];
   onEdit?: () => void;
   onArchive?: () => void;
   onView?: () => void;
   onVolunteer?: () => void;
   onMarkAsDone?: () => void;
+  onMoveToColumn?: (taskId: string, targetColumnId: string) => void;
+  onMoveDirection?: (taskId: string, direction: 'up' | 'down') => void;
 }
 
-export default function KanbanTaskCard({ task, canManage = false, isDragging = false, hasPendingInvitation = false, canVolunteer = false, onEdit, onArchive, onView, onVolunteer, onMarkAsDone }: Props) {
+export default function KanbanTaskCard({
+  task,
+  canManage = false,
+  isDragging = false,
+  hasPendingInvitation = false,
+  canVolunteer = false,
+  availableColumns = [],
+  onEdit,
+  onArchive,
+  onView,
+  onVolunteer,
+  onMarkAsDone,
+  onMoveToColumn,
+  onMoveDirection,
+}: Props) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [completing, setCompleting] = useState(false);
+  const toast = useToast();
 
   const handleComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,10 +72,11 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
         const data = await res.json();
         throw new Error(data.error || 'Failed to complete task');
       }
+      toast.showSuccess('Task marked as done!');
       onMarkAsDone?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      alert(msg || 'An error occurred');
+      toast.showError(msg || 'Failed to complete task');
     } finally {
       setCompleting(false);
     }
@@ -68,6 +94,7 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
   const pColor = priorityColor(task.priority);
   const assignedOjts = task.assigned_ojts ?? [];
   const attachments = task.attachments ?? [];
+  const isOverdue = task.due_date ? isBefore(new Date(task.due_date), startOfDay(new Date())) : false;
 
   return (
     <Box ref={setNodeRef} style={style}>
@@ -75,17 +102,22 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
         {...attributes}
         {...listeners}
         onClick={(e) => { e.stopPropagation(); onView?.(); }}
+        tabIndex={0}
+        aria-roledescription="sortable task"
         sx={{
-          borderRadius: 2,
+          borderRadius: 1,
           cursor: isDragging ? 'grabbing' : 'pointer',
           boxShadow: isDragging
-            ? '0 16px 32px rgba(0,0,0,0.2)'
-            : '0 1px 3px rgba(0,0,0,0.08)',
-          border: '1px solid #f1f5f9',
-          transition: 'box-shadow 0.2s, transform 0.1s',
+            ? SHADOWS.drag
+            : SHADOWS.card,
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
+          transition: 'box-shadow 0.2s, transform 0.15s, border-color 0.2s',
           '&:hover': {
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            borderColor: '#e2e8f0',
+            boxShadow: SHADOWS.hover,
+            borderColor: 'primary.light',
+            transform: 'translateY(-1px)',
           },
           borderLeft: `4px solid ${pColor}`,
         }}
@@ -112,7 +144,8 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
                     icon={<PendingIcon sx={{ fontSize: 11 }} />}
                     label="Invited"
                     size="small"
-                    sx={{ bgcolor: '#fef3c7', color: '#b45309', fontWeight: 600, fontSize: 10, height: 20 }}
+                    color="warning"
+                    sx={{ fontWeight: 600, fontSize: 10, height: 20 }}
                   />
                 </Tooltip>
               )}
@@ -125,6 +158,7 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
                     sx={{ mt: -0.5, color: 'success.main' }}
                     onClick={handleComplete}
                     disabled={completing}
+                    aria-label="Mark task as done"
                   >
                     {completing ? <CircularProgress size={16} /> : <TaskAltIcon fontSize="small" />}
                   </IconButton>
@@ -136,6 +170,7 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
                   sx={{ mt: -0.5, mr: -0.5 }}
                   onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }}
                   disabled={completing}
+                  aria-label="Task options"
                 >
                   <MoreIcon fontSize="small" />
                 </IconButton>
@@ -144,7 +179,19 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
           </Box>
 
           {/* Title */}
-          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5, lineHeight: 1.4 }}>
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            color="text.primary"
+            sx={{
+              mb: 0.5,
+              lineHeight: 1.4,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
             {task.title}
           </Typography>
 
@@ -169,9 +216,12 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
           {/* Due date */}
           {task.due_date && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-              <DateIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
-              <Typography variant="caption" color="text.secondary">
-                {formatDate(task.due_date)}
+              <DateIcon sx={{ fontSize: 12, color: isOverdue ? 'error.main' : 'text.secondary' }} />
+              <Typography
+                variant="caption"
+                sx={{ color: isOverdue ? 'error.main' : 'text.secondary', fontWeight: isOverdue ? 700 : 400 }}
+              >
+                {isOverdue ? 'Overdue · ' : ''}{formatDate(task.due_date)}
               </Typography>
             </Box>
           )}
@@ -184,7 +234,7 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
                 max={4}
                 sx={{
                   '& .MuiAvatar-root': {
-                    width: 24, height: 24, fontSize: 10, border: '1.5px solid white',
+                    width: 24, height: 24, fontSize: 10, border: '1.5px solid', borderColor: 'background.paper',
                   },
                 }}
               >
@@ -241,11 +291,12 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
         </CardContent>
       </Card>
 
-      {/* Context menu */}
+      {/* Accessible Context menu for single pointer / keyboard alternatives */}
       <Menu
         anchorEl={menuAnchor}
         open={!!menuAnchor}
         onClose={() => setMenuAnchor(null)}
+        onClick={(e) => e.stopPropagation()}
       >
         <MenuItem onClick={handleComplete} sx={{ color: 'success.main', fontWeight: 500 }}>
           <ListItemIcon><TaskAltIcon fontSize="small" color="success" /></ListItemIcon>
@@ -255,9 +306,41 @@ export default function KanbanTaskCard({ task, canManage = false, isDragging = f
           <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
           Edit Task
         </MenuItem>
+
+        {/* Accessible reordering alternatives */}
+        {onMoveDirection ? [
+          <Divider key="move-dir-divider" />,
+          <MenuItem key="move-up" onClick={() => { setMenuAnchor(null); onMoveDirection(task.id, 'up'); }}>
+            <ListItemIcon><ArrowUpIcon fontSize="small" /></ListItemIcon>
+            Move Up
+          </MenuItem>,
+          <MenuItem key="move-down" onClick={() => { setMenuAnchor(null); onMoveDirection(task.id, 'down'); }}>
+            <ListItemIcon><ArrowDownIcon fontSize="small" /></ListItemIcon>
+            Move Down
+          </MenuItem>,
+        ] : null}
+
+        {/* Move to another column */}
+        {availableColumns.length > 0 && onMoveToColumn ? [
+          <Divider key="move-col-divider" />,
+          ...availableColumns.map((col) => (
+            <MenuItem
+              key={`move-to-${col.id}`}
+              onClick={() => {
+                setMenuAnchor(null);
+                onMoveToColumn(task.id, col.id);
+              }}
+            >
+              <ListItemIcon><MoveIcon fontSize="small" /></ListItemIcon>
+              Move to {col.title}
+            </MenuItem>
+          )),
+        ] : null}
+
+        <Divider />
         <MenuItem
           onClick={() => { setMenuAnchor(null); onArchive?.(); }}
-          sx={{ color: 'warning.dark' }}
+          sx={{ color: 'warning.light' }}
         >
           <ListItemIcon><ArchiveIcon fontSize="small" color="warning" /></ListItemIcon>
           Archive Task

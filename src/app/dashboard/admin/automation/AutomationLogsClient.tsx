@@ -17,6 +17,8 @@ import {
   Warning as WarningIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
+import { useToast } from '@/lib/context/ToastContext';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 
 interface Metrics {
   eventsToday: number;
@@ -70,6 +72,17 @@ export default function AutomationLogsClient() {
 
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    type: 'replay' | 'discard';
+    id: string;
+  }>({
+    open: false,
+    type: 'replay',
+    id: '',
+  });
+
+  const toast = useToast();
 
   const fetchLogs = async (p = 1) => {
     try {
@@ -112,33 +125,38 @@ export default function AutomationLogsClient() {
     }
   }, [tab]);
 
-  const handleReplay = async (id: string) => {
-    if (!confirm('Are you sure you want to replay this failed event?')) return;
-    try {
-      setActionLoading(true);
-      const res = await fetch('/api/automation/dead-letters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) throw new Error('Replay failed');
-      await fetchDeadLetters();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
-    } finally {
-      setActionLoading(false);
-    }
+  const handleReplayClick = (id: string) => {
+    setConfirmState({ open: true, type: 'replay', id });
   };
 
-  const handleDiscard = async (id: string) => {
-    if (!confirm('Are you sure you want to discard this event? It cannot be recovered.')) return;
+  const handleDiscardClick = (id: string) => {
+    setConfirmState({ open: true, type: 'discard', id });
+  };
+
+  const executeConfirmedAction = async () => {
+    const { type, id } = confirmState;
+    if (!id) return;
+
     try {
       setActionLoading(true);
-      const res = await fetch(`/api/automation/dead-letters?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Discard failed');
+      if (type === 'replay') {
+        const res = await fetch('/api/automation/dead-letters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (!res.ok) throw new Error('Replay failed');
+        toast.showSuccess('Event queued for replay.');
+      } else {
+        const res = await fetch(`/api/automation/dead-letters?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Discard failed');
+        toast.showSuccess('Event discarded successfully.');
+      }
+      setConfirmState({ open: false, type: 'replay', id: '' });
       await fetchDeadLetters();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.showError(msg || (type === 'replay' ? 'Failed to replay event.' : 'Failed to discard event.'));
     } finally {
       setActionLoading(false);
     }
@@ -147,14 +165,14 @@ export default function AutomationLogsClient() {
   return (
     <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3, pb: 8 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight={700} color="#111111">
+        <Typography variant="h4" fontWeight={700} color="text.primary">
           Automation
         </Typography>
         <Button
           startIcon={<RefreshIcon />}
           onClick={() => tab === 0 ? fetchLogs(page) : fetchDeadLetters()}
           variant="outlined"
-          sx={{ color: '#555555', borderColor: '#cccccc', '&:hover': { bgcolor: '#f9f9f9', borderColor: '#999999' } }}
+          color="inherit"
         >
           Refresh
         </Button>
@@ -177,12 +195,12 @@ export default function AutomationLogsClient() {
             { label: 'Slowest', value: metrics.slowestWorkflow || 'N/A' },
           ].map((m, i) => (
             <Grid size={{ xs: 12, sm: 6, md: 3, lg: 12 / 7 }} key={i}>
-              <Card sx={{ bgcolor: '#ffffff', border: '1px solid #e5e5e5', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}>
+              <Card sx={{ bgcolor: 'background.paper', height: '100%' }}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Typography variant="caption" color="#555555" display="block" gutterBottom>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                     {m.label}
                   </Typography>
-                  <Typography variant="h6" fontWeight={600} color={m.color || '#111111'} noWrap>
+                  <Typography variant="h6" fontWeight={600} color={m.color || 'text.primary'} noWrap>
                     {m.value}
                   </Typography>
                 </CardContent>
@@ -196,13 +214,13 @@ export default function AutomationLogsClient() {
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
-        sx={{ borderBottom: '1px solid #e5e5e5', mb: 3, '.MuiTab-root': { color: '#555555', fontWeight: 500 }, '.Mui-selected': { color: '#111111 !important', fontWeight: 600 } }}
+        sx={{ borderBottom: '1px solid', borderColor: 'divider', mb: 3 }}
       >
         <Tab label="Execution Logs" />
         <Tab
           label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              ⚠ Failed Events
+              Failed Events
               {deadLetters.length > 0 && tab !== 1 && (
                 <Chip label={deadLetters.length} size="small" color="error" sx={{ height: 20 }} />
               )}
@@ -212,29 +230,29 @@ export default function AutomationLogsClient() {
       </Tabs>
 
       {/* Content */}
-      <Paper sx={{ bgcolor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: 2, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+      <Paper sx={{ bgcolor: 'background.paper', borderRadius: 2, overflow: 'hidden' }}>
         {loading ? (
           <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
         ) : tab === 0 ? (
           <>
             <TableContainer>
               <Table size="small">
-                <TableHead sx={{ bgcolor: '#f9f9f9' }}>
+                <TableHead sx={{ bgcolor: 'action.hover' }}>
                   <TableRow>
-                    <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Status</TableCell>
-                    <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Event Type</TableCell>
-                    <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Duration</TableCell>
-                    <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Retries</TableCell>
-                    <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Time</TableCell>
-                    <TableCell align="right" sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Event Type</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Retries</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Time</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {logs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} align="center" sx={{ color: '#555555', py: 4, borderBottom: 'none' }}>No logs found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 4, borderBottom: 'none' }}>No logs found.</TableCell></TableRow>
                   ) : (
                     logs.map(log => (
-                      <TableRow key={log.id} sx={{ '& td': { borderBottom: '1px solid #e5e5e5' }, '&:hover': { bgcolor: '#f9f9f9' } }}>
+                      <TableRow key={log.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                         <TableCell>
                           <Chip
                             icon={log.status === 'success' ? <SuccessIcon /> : log.status === 'failed' ? <ErrorIcon /> : <WarningIcon />}
@@ -244,13 +262,13 @@ export default function AutomationLogsClient() {
                             variant="outlined"
                           />
                         </TableCell>
-                        <TableCell sx={{ color: '#111111', fontWeight: 500 }}>{log.event_type}</TableCell>
-                        <TableCell sx={{ color: '#555555' }}>{log.duration_ms}ms</TableCell>
-                        <TableCell sx={{ color: '#555555' }}>{log.attempt_count - 1}</TableCell>
-                        <TableCell sx={{ color: '#555555' }}>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{log.event_type}</TableCell>
+                        <TableCell sx={{ color: 'text.secondary' }}>{log.duration_ms}ms</TableCell>
+                        <TableCell sx={{ color: 'text.secondary' }}>{log.attempt_count - 1}</TableCell>
+                        <TableCell sx={{ color: 'text.secondary' }}>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</TableCell>
                         <TableCell align="right">
                           <Tooltip title="View Payload">
-                            <IconButton size="small" onClick={() => setSelectedLog(log)} sx={{ color: '#555555' }}>
+                            <IconButton size="small" onClick={() => setSelectedLog(log)} aria-label="View payload">
                               <ViewIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -267,7 +285,6 @@ export default function AutomationLogsClient() {
                   count={totalPages}
                   page={page}
                   onChange={(_, p) => fetchLogs(p)}
-                  sx={{ '.MuiPaginationItem-root': { color: '#555555' }, '.Mui-selected': { bgcolor: '#e5e5e5', color: '#111111', fontWeight: 600 } }}
                 />
               </Box>
             )}
@@ -275,38 +292,38 @@ export default function AutomationLogsClient() {
         ) : (
           <TableContainer>
             <Table size="small">
-              <TableHead sx={{ bgcolor: '#f9f9f9' }}>
+              <TableHead sx={{ bgcolor: 'action.hover' }}>
                 <TableRow>
-                  <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Event Type</TableCell>
-                  <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Error Message</TableCell>
-                  <TableCell sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Failed At</TableCell>
-                  <TableCell align="right" sx={{ color: '#444444', fontWeight: 600, borderBottom: '1px solid #e5e5e5' }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Event Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Error Message</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Failed At</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {deadLetters.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} align="center" sx={{ color: '#555555', py: 4, borderBottom: 'none' }}>No failed events in queue.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 4, borderBottom: 'none' }}>No failed events in queue.</TableCell></TableRow>
                 ) : (
                   deadLetters.map(dl => (
-                    <TableRow key={dl.id} sx={{ '& td': { borderBottom: '1px solid #e5e5e5' }, '&:hover': { bgcolor: '#f9f9f9' } }}>
-                      <TableCell sx={{ color: '#111111', fontWeight: 500 }}>{dl.event_type}</TableCell>
-                      <TableCell sx={{ color: '#ef4444', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <TableRow key={dl.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                      <TableCell sx={{ fontWeight: 500 }}>{dl.event_type}</TableCell>
+                      <TableCell sx={{ color: 'error.main', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {dl.error_message || 'Unknown error'}
                       </TableCell>
-                      <TableCell sx={{ color: '#555555' }}>{format(new Date(dl.created_at), 'MMM d, HH:mm:ss')}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{format(new Date(dl.created_at), 'MMM d, HH:mm:ss')}</TableCell>
                       <TableCell align="right">
                         <Tooltip title="Inspect Payload">
-                          <IconButton size="small" onClick={() => setSelectedDeadLetter(dl)} sx={{ color: '#555555' }}>
+                          <IconButton size="small" onClick={() => setSelectedDeadLetter(dl)} aria-label="Inspect payload">
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Retry Event">
-                          <IconButton size="small" onClick={() => handleReplay(dl.id)} sx={{ color: '#10b981' }} disabled={actionLoading}>
+                          <IconButton size="small" onClick={() => handleReplayClick(dl.id)} color="success" disabled={actionLoading} aria-label="Retry event">
                             <RetryIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Discard">
-                          <IconButton size="small" onClick={() => handleDiscard(dl.id)} sx={{ color: '#ef4444' }} disabled={actionLoading}>
+                          <IconButton size="small" onClick={() => handleDiscardClick(dl.id)} color="error" disabled={actionLoading} aria-label="Discard event">
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -326,24 +343,24 @@ export default function AutomationLogsClient() {
         onClose={() => setSelectedLog(null)}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#ffffff', color: '#111111', borderRadius: 2, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', borderRadius: 2 } }}
       >
-        <DialogTitle sx={{ borderBottom: '1px solid #e5e5e5', fontWeight: 700 }}>Execution Details</DialogTitle>
+        <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', fontWeight: 700 }}>Execution Details</DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           {selectedLog?.error_message && (
             <Alert severity="error" sx={{ mb: 2 }}>{selectedLog.error_message}</Alert>
           )}
-          <Typography variant="subtitle2" color="#555555" gutterBottom>Request Payload</Typography>
-          <Box component="pre" sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 1, border: '1px solid #e5e5e5', overflow: 'auto', mb: 3, fontSize: 12 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>Request Payload</Typography>
+          <Box component="pre" sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider', overflow: 'auto', mb: 3, fontSize: 12 }}>
             {selectedLog?.request_payload ? JSON.stringify(selectedLog.request_payload, null, 2) : 'Not stored (log level is minimal or errors-only)'}
           </Box>
-          <Typography variant="subtitle2" color="#555555" gutterBottom>Response Payload</Typography>
-          <Box component="pre" sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 1, border: '1px solid #e5e5e5', overflow: 'auto', fontSize: 12 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>Response Payload</Typography>
+          <Box component="pre" sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider', overflow: 'auto', fontSize: 12 }}>
             {selectedLog?.response_payload ? JSON.stringify(selectedLog.response_payload, null, 2) : 'Not stored'}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid #e5e5e5', p: 2, bgcolor: '#f9f9f9' }}>
-          <Button onClick={() => setSelectedLog(null)} sx={{ color: '#555555', fontWeight: 600 }}>Close</Button>
+        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', p: 2 }}>
+          <Button onClick={() => setSelectedLog(null)} color="inherit">Close</Button>
         </DialogActions>
       </Dialog>
 
@@ -353,35 +370,50 @@ export default function AutomationLogsClient() {
         onClose={() => setSelectedDeadLetter(null)}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#ffffff', color: '#111111', borderRadius: 2, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', borderRadius: 2 } }}
       >
-        <DialogTitle sx={{ borderBottom: '1px solid #e5e5e5', fontWeight: 700 }}>Failed Event Details</DialogTitle>
+        <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', fontWeight: 700 }}>Failed Event Details</DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           <Alert severity="error" sx={{ mb: 2 }}>{selectedDeadLetter?.error_message}</Alert>
-          <Typography variant="subtitle2" color="#555555" gutterBottom>Full Payload for Recovery</Typography>
-          <Box component="pre" sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 1, border: '1px solid #e5e5e5', overflow: 'auto', fontSize: 12 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>Full Payload for Recovery</Typography>
+          <Box component="pre" sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider', overflow: 'auto', fontSize: 12 }}>
             {JSON.stringify(selectedDeadLetter?.payload, null, 2)}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid #e5e5e5', p: 2, bgcolor: '#f9f9f9' }}>
-          <Button onClick={() => setSelectedDeadLetter(null)} sx={{ color: '#555555', fontWeight: 600 }}>Close</Button>
+        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', p: 2 }}>
+          <Button onClick={() => setSelectedDeadLetter(null)} color="inherit">Close</Button>
           <Button
             onClick={() => {
               if (selectedDeadLetter) {
-                handleReplay(selectedDeadLetter.id);
+                const id = selectedDeadLetter.id;
                 setSelectedDeadLetter(null);
+                handleReplayClick(id);
               }
             }}
             variant="contained"
             color="success"
-            disableElevation
-            sx={{ fontWeight: 600, borderRadius: 1.5 }}
             disabled={actionLoading}
           >
             Retry Event
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Accessible Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.type === 'replay' ? 'Replay Failed Event' : 'Discard Failed Event'}
+        content={
+          confirmState.type === 'replay'
+            ? 'Are you sure you want to replay this failed event?'
+            : 'Are you sure you want to discard this event? It cannot be recovered.'
+        }
+        confirmText={confirmState.type === 'replay' ? 'Replay Event' : 'Discard Event'}
+        confirmColor={confirmState.type === 'replay' ? 'primary' : 'error'}
+        loading={actionLoading}
+        onConfirm={executeConfirmedAction}
+        onCancel={() => setConfirmState({ open: false, type: 'replay', id: '' })}
+      />
     </Box>
   );
 }

@@ -10,9 +10,7 @@ import {
   TrendingUp as TrendIcon,
 } from '@mui/icons-material';
 import StatCard from '@/components/shared/StatCard';
-import AttendanceTable from '@/components/attendance/AttendanceTable';
 import { formatHours } from '@/lib/utils/format';
-import { Attendance, Profile } from '@/types';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -25,10 +23,9 @@ interface AdminStats {
 
 interface Props {
   stats: AdminStats;
-  initialAttendance: (Attendance & { profile?: Profile })[];
 }
 
-export default function AdminDashboardClient({ stats, initialAttendance }: Props) {
+export default function AdminDashboardClient({ stats }: Props) {
   const { profile } = useAuth();
   const router = useRouter();
 
@@ -40,7 +37,6 @@ export default function AdminDashboardClient({ stats, initialAttendance }: Props
           severity="info"
           sx={{
             mb: 3,
-            borderRadius: 3,
             bgcolor: 'rgba(99, 102, 241, 0.05)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             color: 'text.primary',
@@ -84,9 +80,6 @@ export default function AdminDashboardClient({ stats, initialAttendance }: Props
           <StatCard title="Total Hours" value={formatHours(stats.total_hours_all)} subtitle="All time (all OJTs)" icon={<TrendIcon />} color="#ec4899" />
         </Grid>
       </Grid>
-
-      {/* All Attendance */}
-      <AttendanceTable showUser={true} initialRecords={initialAttendance} />
     </Box>
   );
 }

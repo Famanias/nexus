@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Box, Alert, Stack, Typography, Tabs, Tab, Chip,
   InputAdornment, CircularProgress,
@@ -11,6 +11,8 @@ import {
   VpnKey as InviteIcon,
   CheckCircle as CheckIcon,
   Error as ErrorIcon,
+  Check as CheckSimpleIcon,
+  Close as CloseSimpleIcon,
 } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -23,6 +25,12 @@ import InputField from './InputField';
 import PasswordField from './PasswordField';
 import PrimaryButton from './PrimaryButton';
 import AuthFooter from './AuthFooter';
+import {
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+  validateRequired,
+} from '@/lib/utils/validation';
 import { Turnstile } from '@marsidev/react-turnstile';
 
 interface InviteVerifyResult {
@@ -46,9 +54,9 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { label: 'Weak', color: '#dc2626', score };
-  if (score === 2) return { label: 'Medium', color: '#d97706', score };
-  return { label: 'Strong', color: '#16a34a', score };
+  if (score <= 1) return { label: 'Weak', color: '#ef4444', score };
+  if (score === 2) return { label: 'Medium', color: '#f59e0b', score };
+  return { label: 'Strong', color: '#10b981', score };
 }
 
 export default function RegisterForm() {
@@ -60,14 +68,36 @@ export default function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [orgName, setOrgName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+
+  // Touched states for inline validation
+  const [touched, setTouched] = useState({
+    firstName: false,
+    lastName: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+    orgName: false,
+    inviteCode: false,
+  });
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [inviteValid, setInviteValid] = useState<InviteVerifyResult | null>(null);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  // Field input refs for focus management
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const turnstileRef = React.useRef<any>(null);
+  const turnstileRef = useRef<any>(null);
+  const orgNameRef = useRef<HTMLInputElement>(null);
+  const inviteCodeRef = useRef<HTMLInputElement>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
@@ -79,7 +109,25 @@ export default function RegisterForm() {
   const [inviteTokenDetails, setInviteTokenDetails] = useState<{ email: string; orgName: string; role: string } | null>(null);
   const [verifyingInviteToken, setVerifyingInviteToken] = useState(false);
 
+  const passwordValidation = useMemo(() => validatePassword(password), [password]);
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
+
+  // Real-time error calculations
+  const errors = useMemo(() => ({
+    firstName: touched.firstName ? validateRequired(firstName, 'First name') : null,
+    lastName: touched.lastName ? validateRequired(lastName, 'Last name') : null,
+    email: touched.email ? validateEmail(email) : null,
+    password: touched.password
+      ? (!password ? 'Password is required.' : !passwordValidation.valid ? 'Password does not meet all criteria.' : null)
+      : null,
+    confirmPassword: touched.confirmPassword
+      ? validateConfirmPassword(password, confirmPassword)
+      : null,
+    orgName: touched.orgName && tab === 0 && !inviteToken ? validateRequired(orgName, 'Organization name') : null,
+    inviteCode: touched.inviteCode && tab === 1 && !inviteToken
+      ? (!inviteCode.trim() ? 'Invite code is required.' : inviteValid && !inviteValid.valid ? 'Invalid invite code.' : null)
+      : null,
+  }), [touched, firstName, lastName, email, password, confirmPassword, orgName, inviteCode, tab, inviteToken, passwordValidation, inviteValid]);
 
   React.useEffect(() => {
     if (errorParam) {
@@ -138,12 +186,22 @@ export default function RegisterForm() {
     setInviteValid(null);
   };
 
+  const markAllTouched = () => {
+    setTouched({
+      firstName: true,
+      lastName: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+      orgName: true,
+      inviteCode: true,
+    });
+  };
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError('');
 
-    // If they typed details for organization creation or joining, store it in a secure cookie
-    // to preserve intent without exposing it in the browser history/query parameters
     const intent: { action?: 'create' | 'join'; orgName?: string; inviteCode?: string } = {};
     if (tab === 0 && orgName.trim()) {
       intent.action = 'create';
@@ -178,28 +236,51 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    markAllTouched();
 
-    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
-      setError('Please complete the CAPTCHA verification.');
+    // Validate in sequence and focus first invalid field
+    if (!inviteToken && tab === 0) {
+      const orgErr = validateRequired(orgName, 'Organization name');
+      if (orgErr) {
+        orgNameRef.current?.focus();
+        return;
+      }
+    }
+
+    if (!inviteToken && tab === 1) {
+      const codeErr = !inviteCode.trim() ? 'Invite code is required.' : (inviteValid && !inviteValid.valid ? 'Invalid invite code.' : null);
+      if (codeErr) {
+        inviteCodeRef.current?.focus();
+        return;
+      }
+    }
+
+    const fnErr = validateRequired(firstName, 'First name');
+    if (fnErr) {
+      firstNameRef.current?.focus();
       return;
     }
 
-    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const lnErr = validateRequired(lastName, 'Last name');
+    if (lnErr) {
+      lastNameRef.current?.focus();
+      return;
+    }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      emailRef.current?.focus();
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+
+    if (!passwordValidation.valid) {
+      passwordRef.current?.focus();
       return;
     }
-    if (!/[0-9]/.test(password)) {
-      setError('Password must contain at least one number.');
-      return;
-    }
-    if (!/[^A-Za-z0-9]/.test(password)) {
-      setError('Password must contain at least one special character.');
+
+    const confirmErr = validateConfirmPassword(password, confirmPassword);
+    if (confirmErr) {
+      confirmPasswordRef.current?.focus();
       return;
     }
 
@@ -208,28 +289,25 @@ export default function RegisterForm() {
         setError('Cannot register: invitation is invalid or expired.');
         return;
       }
-    } else {
-      if (tab === 0 && !orgName.trim()) {
-        setError('Please enter an organization name.');
-        return;
-      }
-      if (tab === 1 && (!inviteCode.trim() || !inviteValid?.valid)) {
-        setError('Please enter a valid invite code.');
-        return;
-      }
+    }
+
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
     }
 
     setLoading(true);
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
     let payload;
     if (inviteToken) {
       payload = { action: 'accept_invite', inviteToken, fullName, password };
     } else if (tab === 0) {
-      payload = { action: 'create', orgName: orgName.trim(), fullName, email, password };
+      payload = { action: 'create', orgName: orgName.trim(), fullName, email: email.trim(), password };
     } else if (tab === 1) {
-      payload = { action: 'join', inviteCode: inviteCode.trim().toUpperCase(), fullName, email, password };
+      payload = { action: 'join', inviteCode: inviteCode.trim().toUpperCase(), fullName, email: email.trim(), password };
     } else {
-      payload = { action: 'register_personal', fullName, email, password };
+      payload = { action: 'register_personal', fullName, email: email.trim(), password };
     }
 
     const res = await fetch('/api/organizations', {
@@ -272,7 +350,7 @@ export default function RegisterForm() {
         subtitle="Set up your account to start managing internship workflows."
       >
         {error && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} role="alert">
             {error}
           </Alert>
         )}
@@ -297,13 +375,24 @@ export default function RegisterForm() {
         <AuthDivider label="Or continue with email" />
 
         {inviteToken ? (
-          <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 3, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              mb: 2.5,
+              p: 2,
+              bgcolor: 'rgba(16, 185, 129, 0.1)',
+              borderRadius: 1,
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+            }}
+          >
             <CheckIcon color="success" />
             <Box>
-              <Typography variant="body2" fontWeight={600} color="#166534">
+              <Typography variant="body2" fontWeight={600} color="success.main">
                 Accepting Invitation
               </Typography>
-              <Typography variant="caption" color="#15803d">
+              <Typography variant="caption" color="text.secondary">
                 Joining <strong>{inviteTokenDetails?.orgName ?? 'loading...'}</strong> as a <strong>{inviteTokenDetails?.role.toUpperCase() ?? 'loading...'}</strong>.
               </Typography>
             </Box>
@@ -321,19 +410,29 @@ export default function RegisterForm() {
           </Tabs>
         )}
 
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
           {!inviteToken && tab === 0 && (
             <InputField
+              id="register-org-name"
+              inputRef={orgNameRef}
               label="Organization Name"
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, orgName: true }))}
+              error={!!errors.orgName}
+              helperText={errors.orgName}
               required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <OrgIcon color="action" fontSize="small" />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <OrgIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+                htmlInput: {
+                  'aria-invalid': !!errors.orgName,
+                }
               }}
             />
           )}
@@ -341,6 +440,8 @@ export default function RegisterForm() {
           {!inviteToken && tab === 1 && (
             <>
               <InputField
+                id="register-invite-code"
+                inputRef={inviteCodeRef}
                 label="Invite Code"
                 value={inviteCode}
                 onChange={(e) => {
@@ -348,28 +449,38 @@ export default function RegisterForm() {
                   setInviteCode(val);
                   setInviteValid(null);
                 }}
-                onBlur={() => verifyInviteCode(inviteCode)}
+                onBlur={() => {
+                  setTouched(t => ({ ...t, inviteCode: true }));
+                  verifyInviteCode(inviteCode);
+                }}
+                error={!!errors.inviteCode}
+                helperText={errors.inviteCode}
                 required
                 sx={{ mb: 1 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <InviteIcon color="action" fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: verifyingCode ? (
-                    <InputAdornment position="end">
-                      <CircularProgress size={18} />
-                    </InputAdornment>
-                  ) : inviteValid !== null ? (
-                    <InputAdornment position="end">
-                      {inviteValid.valid ? (
-                        <CheckIcon color="success" fontSize="small" />
-                      ) : (
-                        <ErrorIcon color="error" fontSize="small" />
-                      )}
-                    </InputAdornment>
-                  ) : null,
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <InviteIcon color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: verifyingCode ? (
+                      <InputAdornment position="end">
+                        <CircularProgress size={18} />
+                      </InputAdornment>
+                    ) : inviteValid !== null ? (
+                      <InputAdornment position="end">
+                        {inviteValid.valid ? (
+                          <CheckIcon color="success" fontSize="small" />
+                        ) : (
+                          <ErrorIcon color="error" fontSize="small" />
+                        )}
+                      </InputAdornment>
+                    ) : null,
+                  },
+                  htmlInput: {
+                    'aria-invalid': !!errors.inviteCode,
+                  }
                 }}
               />
               <Box sx={{ mb: 2, minHeight: 24 }}>
@@ -394,42 +505,86 @@ export default function RegisterForm() {
           {/* First / Last name — side-by-side on desktop */}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} sx={{ mb: 2.5 }}>
             <InputField
+              id="register-first-name"
+              inputRef={firstNameRef}
               label="First Name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, firstName: true }))}
+              error={!!errors.firstName}
+              helperText={errors.firstName}
               required
+              autoComplete="given-name"
+              slotProps={{
+                htmlInput: {
+                  'aria-invalid': !!errors.firstName,
+                }
+              }}
             />
             <InputField
+              id="register-last-name"
+              inputRef={lastNameRef}
               label="Last Name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, lastName: true }))}
+              error={!!errors.lastName}
+              helperText={errors.lastName}
               required
+              autoComplete="family-name"
+              slotProps={{
+                htmlInput: {
+                  'aria-invalid': !!errors.lastName,
+                }
+              }}
             />
           </Stack>
 
           <InputField
+            id="register-email"
+            inputRef={emailRef}
             label="Email Address"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouched(t => ({ ...t, email: true }))}
+            error={!!errors.email}
+            helperText={errors.email}
             required
             sx={{ mb: 2.5 }}
-            InputProps={{
-              readOnly: !!inviteToken,
+            autoComplete="email"
+            slotProps={{
+              input: {
+                readOnly: !!inviteToken,
+              },
+              htmlInput: {
+                'aria-invalid': !!errors.email,
+              }
             }}
           />
 
           <PasswordField
+            id="register-password"
+            inputRef={passwordRef}
             label="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setTouched(t => ({ ...t, password: true }))}
+            error={!!errors.password}
+            helperText={errors.password}
             required
-            helperText="At least 8 characters, with a number and a special character."
+            autoComplete="new-password"
+            slotProps={{
+              htmlInput: {
+                'aria-invalid': !!errors.password,
+              }
+            }}
           />
 
+          {/* Password strength & requirements checklist */}
           {password && (
             <Box sx={{ mt: 1, mb: 2.5 }}>
-              <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+              <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
                 {[0, 1, 2].map((i) => (
                   <Box
                     key={i}
@@ -437,24 +592,67 @@ export default function RegisterForm() {
                       height: 4,
                       flex: 1,
                       borderRadius: 2,
-                      bgcolor: i < passwordStrength.score ? passwordStrength.color : '#e5e7eb',
+                      bgcolor: i < passwordStrength.score ? passwordStrength.color : 'rgba(255, 255, 255, 0.1)',
                       transition: 'background-color 0.2s ease',
                     }}
                   />
                 ))}
               </Box>
-              <Typography variant="caption" sx={{ color: passwordStrength.color, fontWeight: 600 }}>
+              <Typography variant="caption" sx={{ color: passwordStrength.color, fontWeight: 600, display: 'block', mb: 1 }}>
                 {passwordStrength.label} password
               </Typography>
+              <Stack spacing={0.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  {passwordValidation.hasMinLength ? (
+                    <CheckSimpleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                  ) : (
+                    <CloseSimpleIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  )}
+                  <Typography variant="caption" color={passwordValidation.hasMinLength ? 'success.main' : 'text.secondary'}>
+                    At least 8 characters
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  {passwordValidation.hasNumber ? (
+                    <CheckSimpleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                  ) : (
+                    <CloseSimpleIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  )}
+                  <Typography variant="caption" color={passwordValidation.hasNumber ? 'success.main' : 'text.secondary'}>
+                    At least 1 number (0-9)
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  {passwordValidation.hasSpecialChar ? (
+                    <CheckSimpleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                  ) : (
+                    <CloseSimpleIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  )}
+                  <Typography variant="caption" color={passwordValidation.hasSpecialChar ? 'success.main' : 'text.secondary'}>
+                    At least 1 special character (!@#$%^&*...)
+                  </Typography>
+                </Box>
+              </Stack>
             </Box>
           )}
 
           <PasswordField
+            id="register-confirm-password"
+            inputRef={confirmPasswordRef}
             label="Confirm Password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            onBlur={() => setTouched(t => ({ ...t, confirmPassword: true }))}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
             required
             sx={{ mb: 3 }}
+            autoComplete="new-password"
+            slotProps={{
+              htmlInput: {
+                'aria-invalid': !!errors.confirmPassword,
+              }
+            }}
           />
 
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', minHeight: '65px' }}>
@@ -472,7 +670,7 @@ export default function RegisterForm() {
                   setError('CAPTCHA verification failed. Please try again.');
                 }}
                 options={{
-                  theme: 'light',
+                  theme: 'dark',
                 }}
               />
             ) : (

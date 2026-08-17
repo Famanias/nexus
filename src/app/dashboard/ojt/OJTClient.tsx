@@ -10,7 +10,6 @@ import {
 } from '@mui/icons-material';
 import { useAttendance } from '@/lib/hooks/useAttendance';
 import ClockButton from '@/components/attendance/ClockButton';
-import AttendanceTable from '@/components/attendance/AttendanceTable';
 import HoursProgress from '@/components/attendance/HoursProgress';
 import StatCard from '@/components/shared/StatCard';
 import { formatHours } from '@/lib/utils/format';
@@ -21,10 +20,9 @@ interface Props {
   profile: Profile;
   initialTodayRecord: Attendance | null;
   initialSummary: AttendanceSummary;
-  initialRecords: Attendance[];
 }
 
-export default function OJTClient({ profile, initialTodayRecord, initialSummary, initialRecords }: Props) {
+export default function OJTClient({ profile, initialTodayRecord, initialSummary }: Props) {
   // useAttendance still provides refresh / real-time updates after clock in/out
   const { todayRecord, summary, refresh } = useAttendance(profile.id);
   const router = useRouter();
@@ -41,7 +39,6 @@ export default function OJTClient({ profile, initialTodayRecord, initialSummary,
           severity="info"
           sx={{
             mb: 3,
-            borderRadius: 3,
             bgcolor: 'rgba(99, 102, 241, 0.05)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             color: 'text.primary',
@@ -113,7 +110,7 @@ export default function OJTClient({ profile, initialTodayRecord, initialSummary,
       </Grid>
 
       {/* Clock + Progress */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 5 }}>
           <ClockButton
             userId={profile.id}
@@ -125,9 +122,6 @@ export default function OJTClient({ profile, initialTodayRecord, initialSummary,
           <HoursProgress summary={displaySummary} />
         </Grid>
       </Grid>
-
-      {/* Attendance history */}
-      <AttendanceTable userId={profile.id} showUser={false} initialRecords={initialRecords} />
     </Box>
   );
 }

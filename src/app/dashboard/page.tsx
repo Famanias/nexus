@@ -8,5 +8,12 @@ export default async function DashboardIndex() {
   if (!user) redirect('/login');
 
   const role = (user.user_metadata?.role as string) ?? 'ojt';
-  redirect(`/dashboard/${role}`);
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, system_role')
+    .eq('id', user.id)
+    .single();
+
+  const effectiveRole = (profile?.system_role ?? profile?.role) ?? role;
+  redirect(`/dashboard/${effectiveRole}`);
 }

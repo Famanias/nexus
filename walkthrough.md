@@ -1,72 +1,85 @@
-# 🚀 Production Readiness Implementation — Completed Walkthrough
+# Walkthrough — Nexus UI/UX Architectural Improvements
 
-**Target Repository**: `Famanias/nexus` (`ojt-tracker`)  
-**Status**: All 5 Implementation Phases Completed & Verified  
-
----
-
-## 1. Executive Summary & Verification Matrix
-
-Every task outlined in the Production Readiness Implementation Plan has been fully executed, tested, and verified.
-
-```bash
-✓ npx eslint .        -> 0 errors, 0 warnings
-✓ npx tsc --noEmit    -> 0 errors
-✓ npm run test        -> 27/27 unit & component tests passing (5 test files)
-✓ npx next build      -> 45 routes compiled cleanly in 12.7s
-```
+All four architectural UI/UX improvements identified in the design audit have been implemented, tested, and verified across the codebase.
 
 ---
 
-## 2. Completed Implementation Phases
+## 1. Accomplishments & Changes Summary
 
-### Phase 1: Zero-Linter Gate & CI Enforcement (100% Complete)
-- **Task 1.1 (GitHub Actions CI Pipeline)**: Created [.github/workflows/ci.yml](file:///d:/repos/ojt-tracker/.github/workflows/ci.yml) running Node 20 dependency installation, ESLint, TypeScript typecheck, Vitest unit tests, and production Next.js build on every push and pull request.
-- **Task 1.2 (React 19 Render Purity & Ref Fixes)**: Resolved render ref access (`useRef.current`) and useEffect state sync issues in [DateRangePickerButton.tsx](file:///d:/repos/ojt-tracker/src/components/shared/DateRangePickerButton.tsx), [useAttendance.ts](file:///d:/repos/ojt-tracker/src/lib/hooks/useAttendance.ts), [TaskModal.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/TaskModal.tsx), and [TaskArchiveDialog.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/TaskArchiveDialog.tsx).
-- **Task 1.3 (Email & JSX Unescaped Quotes)**: Fixed single quotes across all email components and page views using `&apos;` and `&quot;`.
-- **Task 1.4 (Granular ESLint Cleanup)**: Cleared all 102 linting violations down to **0 errors and 0 warnings** repository-wide.
-
-### Phase 2: Testing Harness & Base Infrastructure (100% Complete)
-- **Task 2.1 (Vitest & Testing Library)**: Installed Vitest, React Testing Library, `happy-dom`, and `@testing-library/jest-dom`. Configured [vitest.config.mjs](file:///d:/repos/ojt-tracker/vitest.config.mjs) and [vitest.setup.ts](file:///d:/repos/ojt-tracker/vitest.setup.ts). Added `"test": "vitest run"` script.
-- **Task 2.2 (Pure Helper Unit Tests)**: Created [helpers.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/helpers.test.ts) covering date formatting, URL resolution (`getSiteUrl`), and Kanban permission logic (`canEditTask`, `canManageTasks`).
-- **Task 2.3 (Automation Webhook Gateway Unit Tests)**: Created [automation.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/automation.test.ts) testing exponential backoff retries (`withRetry`) and envelope validation (`parseAutomationRequest`).
-- **Task 2.4 (Component Guard Unit Tests)**: Created [components.test.tsx](file:///d:/repos/ojt-tracker/src/__tests__/unit/components.test.tsx) testing `StatCard` rendering and `RequireOrganization` access guard under `happy-dom`.
-- **Task 2.5 (AES-256-GCM Encryption Service)**: Created [encryption.ts](file:///d:/repos/ojt-tracker/src/lib/services/encryption.ts) with key management (`INTEGRATION_ENCRYPTION_KEY`) and unit tests in [encryption.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/encryption.test.ts).
-
-### Phase 3: Decoupled Automation Gateway Infrastructure (100% Complete)
-- **Task 3.1 (Upstash Redis Client & Queue Abstraction)**: Installed `@upstash/redis` and created [client.ts](file:///d:/repos/ojt-tracker/src/lib/redis/client.ts) supporting FIFO queue operations (`enqueueEvent`, `dequeueEvent`) and Dead-Letter Queue (`pushDLQ`) with in-memory local dev fallback. Tested in [redis.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/redis.test.ts).
-- **Task 3.2 (Railway Background Worker Script)**: Created [railway-worker.ts](file:///d:/repos/ojt-tracker/scripts/railway-worker.ts) with `SIGTERM`/`SIGINT` graceful shutdown and `"worker": "tsx scripts/railway-worker.ts"` script.
-- **Task 3.3 (Automation System Health Check API)**: Built [/api/automation/health](file:///d:/repos/ojt-tracker/src/app/api/automation/health/route.ts) returning real-time Redis queue depth, DLQ size, Supabase DB health, and gateway status.
-- **Task 3.4 (Sliding-Window Rate Limiting)**: Installed `@upstash/ratelimit`, created [rate-limit.ts](file:///d:/repos/ojt-tracker/src/lib/rate-limit.ts) with sliding-window algorithm (100 req/min) and dev fail-open fallback, applied to `/api/automation/events` and `/api/automation/integrations/resolve`, and tested in [rate-limit.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/rate-limit.test.ts).
-- **Task 3.5 (n8n Workflow Gateway Sync Script)**: Verified idempotent deployment script [sync-n8n.mjs](file:///d:/repos/ojt-tracker/scripts/sync-n8n.mjs) running `--dry-run` cleanly.
-
-### Phase 4: Two-Stage Role Migration & Production RLS Refactoring (100% Complete)
-- **Task 4.1 (Dual-Field Role Schema Migration)**: Created [20260723000000_role_enum_backfill.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000000_role_enum_backfill.sql) creating `user_role` enum type (`'admin'`, `'supervisor'`, `'ojt'`), adding `system_role` column to `profiles`, backfilling values, and updating `handle_new_user()`.
-- **Task 4.2 (Code Cutover to `system_role`)**: Updated [types/index.ts](file:///d:/repos/ojt-tracker/src/types/index.ts), [kanbanScope.ts](file:///d:/repos/ojt-tracker/src/lib/utils/kanbanScope.ts), [Sidebar.tsx](file:///d:/repos/ojt-tracker/src/components/shared/Sidebar.tsx), and [api/users/route.ts](file:///d:/repos/ojt-tracker/src/app/api/users/route.ts) to resolve `profile.system_role ?? profile.role`.
-- **Task 4.3 (Strict Column Constraint Migration)**: Created [20260723000001_drop_legacy_role.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000001_drop_legacy_role.sql) setting NOT NULL constraints on `system_role`, replacing text role with generated column, and indexing `(org_id, system_role)`.
-- **Task 4.4 (Storage Bucket RLS Migration)**: Created [20260723000002_storage_bucket_rls.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000002_storage_bucket_rls.sql) isolating `task-attachments` storage access to organization members.
-- **Task 4.5 (Webhook Security Trigger Migration)**: Created [20260723000003_webhook_security.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000003_webhook_security.sql) creating authenticated trigger notification functions.
-- **Task 4.6 (Comprehensive RLS Security Audit Migration)**: Created [20260723000004_rls_security_audit.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000004_rls_security_audit.sql) enforcing organization boundary isolation and closing unauthenticated invitation leaks.
-- **Task 4.7 (Encrypted Integration Secrets Migration & Action Integration)**: Created [20260723000005_encrypted_integrations.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000005_encrypted_integrations.sql) and updated [integrations.ts](file:///d:/repos/ojt-tracker/src/actions/integrations.ts) to encrypt secrets on save (`encryptSecret`) and decrypt on read (`decryptSecret`).
-
-### Phase 5: Final Production Verification & Deployment Gate (100% Complete)
-- **Task 5.1 (Full Verification Gate)**: Ran `npm run test` (27/27 pass), `npx tsc --noEmit` (0 errors), `npx eslint .` (0 errors/warnings), and `npx next build` (45 routes compiled).
+### Phase 1: Toast & Confirmation Dialog System (C3 / M1)
+- **Eliminated all native `alert()` and `confirm()` calls** across the entire codebase.
+- Created [ToastContext.tsx](file:///d:/repos/ojt-tracker/src/lib/context/ToastContext.tsx) providing `useToast()` hook (`showSuccess`, `showError`, `showWarning`, `showInfo`) rendering accessible MUI `<Snackbar>` and `<Alert>` with `role="alert"` (for errors/warnings) and `role="status"` (for success/info).
+- Created [ConfirmDialog.tsx](file:///d:/repos/ojt-tracker/src/components/shared/ConfirmDialog.tsx) for accessible, non-blocking confirmation flows.
+- Integrated `<ToastProvider>` at the root level in [layout.tsx](file:///d:/repos/ojt-tracker/src/app/layout.tsx).
+- Refactored 13+ sites across:
+  - [Sidebar.tsx](file:///d:/repos/ojt-tracker/src/components/shared/Sidebar.tsx) (Leave organization & admin promotion flows)
+  - [UsersClient.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/admin/users/UsersClient.tsx) (Invitations send, resend, revoke, and user editing)
+  - [AutomationLogsClient.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/admin/automation/AutomationLogsClient.tsx) (Replay and discard dead-letter events)
+  - [KanbanBoard.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/KanbanBoard.tsx) (Column deletion and task movement error recovery)
+  - [KanbanTask.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/KanbanTask.tsx) (Mark task complete)
+  - [FinishedTasksDrawer.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/FinishedTasksDrawer.tsx) (Task reopen flow)
 
 ---
 
-## 3. Summary of Added Database Migrations
-
-| Migration File | Description |
-| :--- | :--- |
-| [20260723000000_role_enum_backfill.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000000_role_enum_backfill.sql) | Stage 1: Add `user_role` enum & `system_role` column, backfill data, update `handle_new_user()` trigger |
-| [20260723000001_drop_legacy_role.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000001_drop_legacy_role.sql) | Stage 2: Enforce NOT NULL on `system_role`, add generated text `role` column, create composite index |
-| [20260723000002_storage_bucket_rls.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000002_storage_bucket_rls.sql) | Storage bucket RLS policies for `task-attachments` and `avatars` |
-| [20260723000003_webhook_security.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000003_webhook_security.sql) | Authenticated DB trigger webhook function with buffer logging |
-| [20260723000004_rls_security_audit.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000004_rls_security_audit.sql) | Comprehensive RLS security audit & policy updates across all tables |
-| [20260723000005_encrypted_integrations.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260723000005_encrypted_integrations.sql) | Encrypted integration settings schema & admin RLS policy |
+### Phase 2: Proper Dark Mode in MUI & Design System Tokens (H1 / M3)
+- Configured `palette.mode: 'dark'` in [MuiThemeProvider.tsx](file:///d:/repos/ojt-tracker/src/components/shared/MuiThemeProvider.tsx) with tailored dark neutral surfaces (`#09090b` default background, `#121215` paper background, indigo `#6366f1` accent, `#27272a` dividers, `#f4f4f5` primary text, and `#a1a1aa` secondary text).
+- Cleaned up [globals.css](file:///d:/repos/ojt-tracker/src/app/globals.css) to retire `!important` cascade hacks, allowing MUI `CssBaseline` to deterministically manage theme surfaces and contrast.
+- Tokenized [Sidebar.tsx](file:///d:/repos/ojt-tracker/src/components/shared/Sidebar.tsx), [FinishedTasksDrawer.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/FinishedTasksDrawer.tsx), and [AutomationLogsClient.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/admin/automation/AutomationLogsClient.tsx) to use MUI theme palette tokens instead of hardcoded hex values.
 
 ---
 
-## 4. Final Conclusion
+### Phase 3: Form Validation UX & Field Accessibility (H5)
+- Created [validation.ts](file:///d:/repos/ojt-tracker/src/lib/utils/validation.ts) with pure validation rules for email formatting, password criteria, confirm password equality, and required field constraints.
+- Updated [LoginForm.tsx](file:///d:/repos/ojt-tracker/src/components/auth/LoginForm.tsx):
+  - Field-level touched tracking and inline validation on blur.
+  - Automatic focus movement to the first invalid field upon submit.
+  - Connected `aria-invalid` and `aria-describedby` attributes.
+- Updated [RegisterForm.tsx](file:///d:/repos/ojt-tracker/src/components/auth/RegisterForm.tsx):
+  - Real-time password strength checklist indicating fulfilled requirements (minimum 8 characters, at least 1 number, at least 1 special character).
+  - Inline error feedback per field on blur and upon submit.
+  - Automatic focus management moving to the first failing input.
 
-All security vulnerabilities, linting errors, testing gaps, CI/CD pipeline needs, secret encryption requirements, background worker queues, and database role migrations have been resolved and thoroughly verified.
+---
+
+### Phase 4: Accessible Kanban Drag & Drop (C2 — WCAG Blocker)
+- In [KanbanBoard.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/KanbanBoard.tsx):
+  - Registered `KeyboardSensor` with `sortableKeyboardCoordinates` in `useSensors`.
+  - Added accessibility screen reader announcements (`onDragStart`, `onDragOver`, `onDragEnd`, `onDragCancel`) on `DndContext`.
+  - Added programmatic move handlers `handleMoveTaskProgrammatic`, `handleMoveTaskDirection`, and `handleMoveColumn`.
+- In [KanbanTask.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/KanbanTask.tsx):
+  - Added `aria-roledescription="sortable task"`.
+  - In the task card context menu, added "Move Up", "Move Down", and "Move to [Column Name]" single-pointer / keyboard menu actions.
+- In [KanbanColumn.tsx](file:///d:/repos/ojt-tracker/src/components/kanban/KanbanColumn.tsx):
+  - Added `aria-roledescription="sortable column"`.
+  - In the column context menu, added "Move Left" and "Move Right" options for column reordering without dragging.
+
+---
+
+## 2. Verification & Test Results
+
+### Automated Tests
+1. **Vitest Unit Test Suite**:
+   ```
+   ✓ src/__tests__/unit/validation.test.ts (8 tests)
+   ✓ src/__tests__/unit/toast.test.tsx (4 tests)
+   ✓ src/__tests__/unit/confirm-dialog.test.tsx (3 tests)
+   ✓ src/__tests__/unit/components.test.tsx (3 tests)
+   ✓ src/__tests__/unit/helpers.test.ts (11 tests)
+   ✓ src/__tests__/unit/rate-limit.test.ts (4 tests)
+   ✓ src/__tests__/unit/redis.test.ts (2 tests)
+   ✓ src/__tests__/unit/security.test.ts (8 tests)
+   ✓ src/__tests__/unit/encryption.test.ts (7 tests)
+   ✓ src/__tests__/unit/automation.test.ts (7 tests)
+
+   Test Files  10 passed (10)
+        Tests  57 passed (57)
+   ```
+
+2. **TypeScript Compilation (`tsc --noEmit`)**:
+   - Exit code 0 (zero errors).
+
+3. **ESLint (`eslint src/`)**:
+   - Exit code 0 (zero lint errors or warnings).
+
+4. **Next.js Production Build (`next build`)**:
+   - Exit code 0 (compiled and built successfully).

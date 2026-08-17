@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { PRIORITY_COLORS } from '@/lib/constants/theme';
 
 export function formatDate(dateString: string): string {
   return format(new Date(dateString), 'MMM dd, yyyy');
@@ -42,10 +43,6 @@ export function roleLabel(role: string): string {
 }
 
 export function priorityColor(priority: string): string {
-  const colors: Record<string, string> = {
-    low: '#22c55e',
-    medium: '#f59e0b',
-    high: '#ef4444',
-  };
-  return colors[priority] ?? '#6366f1';
+  const colors = PRIORITY_COLORS as Record<string, string>;
+  return colors[priority] ?? colors.default;
 }

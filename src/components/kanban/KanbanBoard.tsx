@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  DndContext, DragOverlay, closestCorners, PointerSensor,
+  DndContext, DragOverlay, closestCorners, PointerSensor, KeyboardSensor,
   useSensor, useSensors, DragStartEvent, DragOverEvent, DragEndEvent,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useToast } from '@/lib/context/ToastContext';
+import { PRIMARY_TINTS, SHADOWS } from '@/lib/constants/theme';
 import {
   Box, Button, Typography, CircularProgress, Alert, Badge,
   Autocomplete, TextField, Chip, Tooltip, Avatar,
@@ -70,9 +72,11 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
   const canManage = checkCanManageTasks(profile);
   const canManageColumns = checkCanManageColumns(profile);
   const isOjt = !personal && profile?.role === 'ojt';
+  const toast = useToast();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   type RawAssignee = { user_id: string; status?: string; profile: Profile };
@@ -501,6 +505,105 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
     }
   };
 
+  const handleMoveTaskProgrammatic = async (taskId: string, targetColumnId: string) => {
+    const sourceCol = columns.find((c) => c.tasks?.some((t) => t.id === taskId));
+    const destCol = columns.find((c) => c.id === targetColumnId);
+    if (!sourceCol || !destCol || sourceCol.id === targetColumnId) return;
+
+    const taskToMove = sourceCol.tasks?.find((t) => t.id === taskId);
+    if (!taskToMove) return;
+
+    const newSourceTasks = (sourceCol.tasks ?? []).filter((t) => t.id !== taskId);
+    const newDestTasks = [...(destCol.tasks ?? []), { ...taskToMove, column_id: targetColumnId }];
+
+    const updatedCols = columns.map((c) => {
+      if (c.id === sourceCol.id) return { ...c, tasks: newSourceTasks };
+      if (c.id === destCol.id) return { ...c, tasks: newDestTasks };
+      return c;
+    });
+
+    setColumns(updatedCols);
+
+    try {
+      const payloadTasks = [
+        ...newSourceTasks.map((t, i) => ({ id: t.id, column_id: sourceCol.id, position: i })),
+        ...newDestTasks.map((t, i) => ({ id: t.id, column_id: destCol.id, position: i })),
+      ];
+
+      const res = await fetch('/api/kanban/reorder/tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: payloadTasks }),
+      });
+
+      if (!res.ok) throw new Error('Failed to move task');
+      toast.showSuccess(`Task moved to "${destCol.title}"`);
+      fetchBoard(true);
+    } catch (err) {
+      console.error(err);
+      toast.showError('Failed to move task.');
+      fetchBoard(true);
+    }
+  };
+
+  const handleMoveTaskDirection = async (taskId: string, direction: 'up' | 'down') => {
+    const col = columns.find((c) => c.tasks?.some((t) => t.id === taskId));
+    if (!col || !col.tasks) return;
+
+    const idx = col.tasks.findIndex((t) => t.id === taskId);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === col.tasks.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const newTasks = arrayMove(col.tasks, idx, targetIdx);
+    const updatedCols = columns.map((c) => (c.id === col.id ? { ...c, tasks: newTasks } : c));
+    setColumns(updatedCols);
+
+    try {
+      const res = await fetch('/api/kanban/reorder/tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tasks: newTasks.map((t, i) => ({ id: t.id, column_id: col.id, position: i })),
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to reorder task');
+      toast.showSuccess(`Task moved ${direction}`);
+      fetchBoard(true);
+    } catch (err) {
+      console.error(err);
+      toast.showError('Failed to reorder task.');
+      fetchBoard(true);
+    }
+  };
+
+  const handleMoveColumn = async (columnId: string, direction: 'left' | 'right') => {
+    const idx = columns.findIndex((c) => c.id === columnId);
+    if (idx < 0) return;
+    if (direction === 'left' && idx === 0) return;
+    if (direction === 'right' && idx === columns.length - 1) return;
+
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+    const newCols = arrayMove(columns, idx, targetIdx);
+    setColumns(newCols);
+
+    try {
+      const res = await fetch('/api/kanban/reorder/columns', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCols.map((c, i) => ({ id: c.id, position: i }))),
+      });
+      if (!res.ok) throw new Error('Failed to reorder column');
+      toast.showSuccess(`Column moved ${direction}`);
+      fetchBoard(true);
+    } catch (err) {
+      console.error(err);
+      toast.showError('Failed to reorder column.');
+      fetchBoard(true);
+    }
+  };
+
   const confirmDeleteColumn = async () => {
     if (!deleteColConfirm) return;
     const colId = deleteColConfirm.id;
@@ -525,10 +628,11 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
       setDeleteColConfirm(null);
       setDeleteColMoveTarget('');
       setDeleteColAction('archive');
+      toast.showSuccess('Column deleted successfully.');
       fetchBoard(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      alert(msg || 'An error occurred during column deletion.');
+      toast.showError(msg || 'An error occurred during column deletion.');
     }
   };
 
@@ -542,7 +646,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
   }
 
   return (
-    <Box sx={{ p: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ p: 3, height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -651,6 +755,24 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
+          accessibility={{
+            announcements: {
+              onDragStart({ active }) {
+                return `Picked up item ${active.id}.`;
+              },
+              onDragOver({ active, over }) {
+                if (over) return `Item ${active.id} is over ${over.id}.`;
+                return `Item ${active.id} is no longer over a droppable area.`;
+              },
+              onDragEnd({ active, over }) {
+                if (over) return `Item ${active.id} was dropped into ${over.id}.`;
+                return `Item ${active.id} was dropped.`;
+              },
+              onDragCancel({ active }) {
+                return `Dragging cancelled for item ${active.id}.`;
+              },
+            },
+          }}
         >
           <SortableContext
             items={columns.map((c) => c.id)}
@@ -665,10 +787,10 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                 pb: 2,
                 alignItems: 'flex-start',
                 '&::-webkit-scrollbar': { height: 8 },
-                '&::-webkit-scrollbar-thumb': { bgcolor: '#cbd5e1', borderRadius: 4 },
+                '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 4 },
               }}
             >
-              {displayedColumns.map((col) => (
+              {displayedColumns.map((col, idx) => (
                 <KanbanColumnComponent
                   key={col.id}
                   column={col}
@@ -677,9 +799,15 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                   canAddTask={true}
                   currentUserId={profile.id}
                   isOjt={isOjt}
+                  allColumns={columns.map((c) => ({ id: c.id, title: c.title }))}
+                  columnIndex={idx}
+                  totalColumns={displayedColumns.length}
                   onAddTask={() => openCreateTask(col.id)}
                   onEditColumn={() => openEditColumn(col)}
                   onDeleteColumn={() => deleteColumn(col)}
+                  onMoveColumn={handleMoveColumn}
+                  onMoveTaskToColumn={handleMoveTaskProgrammatic}
+                  onMoveTaskDirection={handleMoveTaskDirection}
                   onEditTask={openEditTask}
                   onArchiveTask={archiveTask}
                   onViewTask={openViewTask}
@@ -696,9 +824,10 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                     width: 320,
                     minWidth: 320,
                     height: 120,
-                    borderRadius: 3,
-                    border: '2px dashed #cbd5e1',
-                    bgcolor: 'rgba(255, 255, 255, 0.4)',
+                    borderRadius: 1,
+                    border: '2px dashed',
+                    borderColor: 'divider',
+                    bgcolor: 'action.hover',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -707,9 +836,9 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                     gap: 1,
                     transition: 'all 0.2s',
                     '&:hover': {
-                      bgcolor: 'rgba(99, 102, 241, 0.05)',
+                      bgcolor: PRIMARY_TINTS.strong,
                       borderColor: 'primary.main',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                      boxShadow: SHADOWS.pop,
                     },
                   }}
                 >
@@ -770,7 +899,6 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
         onClose={() => setDeleteColConfirm(null)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <WarningIcon color="warning" />

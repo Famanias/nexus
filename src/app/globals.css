@@ -2,31 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --radius: 10px;
+  --border-radius: 10px;
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* !important here is intentional: MUI's CssBaseline (if wrapped around the
-   app in MuiThemeProvider) injects its own `body { background-color }` rule
-   at runtime via Emotion, using the theme's light-mode default (white).
-   That injection can land after this stylesheet in the cascade, so a plain
-   rule here isn't guaranteed to win — !important makes it deterministic. */
 html {
-  background: #000000 !important;
+  background: #09090b;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background: #000000 !important;
-  color: #ffffff;
+  background: #09090b;
+  color: #f4f4f5;
 }
 
 /* Accessible Keyboard Focus Rings */
 :focus-visible {
-  outline: 2px solid #818cf8;
+  outline: 2px solid #4f46e5;
   outline-offset: 2px;
 }
 

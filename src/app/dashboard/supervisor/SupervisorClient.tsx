@@ -19,7 +19,6 @@ import { Profile, Attendance } from '@/types';
 import { formatHours, formatTime } from '@/lib/utils/format';
 import { format } from 'date-fns';
 import StatCard from '@/components/shared/StatCard';
-import AttendanceTable from '@/components/attendance/AttendanceTable';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Alert } from '@mui/material';
@@ -109,7 +108,7 @@ export default function SupervisorClient({ summaries, stats }: Props) {
       </Grid>
 
       {/* OJT Progress Table */}
-      <Card sx={{ borderRadius: 3, mb: 3 }}>
+      <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6" fontWeight={700}>OJT Progress Overview</Typography>
@@ -128,18 +127,18 @@ export default function SupervisorClient({ summaries, stats }: Props) {
 
           <TableContainer>
             <Table>
-              <TableHead>
-                <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: '#f8fafc' } }}>
-                  <TableCell>Trainee</TableCell>
-                  <TableCell>Today</TableCell>
-                  <TableCell>Total Hours</TableCell>
-                  <TableCell>Progress</TableCell>
-                  <TableCell>Status</TableCell>
+              <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Trainee</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Today</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Total Hours</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Progress</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filtered.map((s) => (
-                  <TableRow key={s.profile.id} hover>
+                  <TableRow key={s.profile.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Avatar src={s.profile.avatar_url} sx={{ width: 36, height: 36 }}>
@@ -208,9 +207,6 @@ export default function SupervisorClient({ summaries, stats }: Props) {
           </TableContainer>
         </CardContent>
       </Card>
-
-      {/* All Attendance Records */}
-      <AttendanceTable showUser={true} />
     </Box>
   );
 }

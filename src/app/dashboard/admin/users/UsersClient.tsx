@@ -20,6 +20,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { Profile, UserRole, Invitation } from '@/types';
 import { roleLabel, formatDate } from '@/lib/utils/format';
+import { useToast } from '@/lib/context/ToastContext';
+import { syncUserRoleMetadata } from '@/actions/users';
 
 interface UserFormData {
   full_name: string;
@@ -60,6 +62,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const toast = useToast();
   
   // Edit Profile Dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -75,27 +78,29 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
   const [inviteRole, setInviteRole] = useState<UserRole>('ojt');
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteError, setInviteError] = useState('');
+
+  // Revoke Dialog state
   const [revokeDialog, setRevokeDialog] = useState<DisplayRow | null>(null);
+  const [revoking, setRevoking] = useState(false);
 
   const supabase = createClient();
 
   const fetchUsers = useCallback(async () => {
-    try {
-      // 1. Fetch profiles
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setUsers(data ?? []);
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      // 2. Fetch invitations
+    if (data) setUsers(data);
+
+    try {
       const res = await fetch('/api/invitations');
       if (res.ok) {
-        const invites = await res.json();
-        setInvitations(invites);
+        const json = await res.json();
+        setInvitations(json.invitations ?? []);
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
+      console.error(err);
     }
   }, [supabase]);
 
@@ -114,7 +119,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
     setInviteSubmitting(true);
     setInviteError('');
 
-    if (!inviteEmail || !inviteEmail.trim()) {
+    if (!inviteEmail) {
       setInviteError('Email is required.');
       setInviteSubmitting(false);
       return;
@@ -132,7 +137,9 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
         setInviteError(json.error ?? 'Failed to send invitation.');
       } else {
         if (json.warning) {
-          alert(json.warning);
+          toast.showWarning(json.warning);
+        } else {
+          toast.showSuccess('Invitation sent successfully!');
         }
         setInviteDialogOpen(false);
         fetchUsers();
@@ -176,6 +183,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
         .update({
           full_name: formData.full_name,
           role: formData.role,
+          system_role: formData.role,
           department: formData.department || null,
           required_hours: formData.required_hours,
           is_active: formData.is_active,
@@ -185,6 +193,12 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       if (updateError) {
         setError(updateError.message);
       } else {
+        const { error: syncError } = await syncUserRoleMetadata(editingUser.id, formData.role);
+        if (syncError) {
+          toast.showWarning(`Profile updated, but role sync failed: ${syncError}`);
+        } else {
+          toast.showSuccess('User updated successfully.');
+        }
         setEditDialogOpen(false);
         fetchUsers();
       }
@@ -200,7 +214,10 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       .eq('id', deleteDialog.id);
 
     if (!deleteError) {
+      toast.showSuccess('User deactivated.');
       fetchUsers();
+    } else {
+      toast.showError('Failed to deactivate user.');
     }
     setDeleteDialog(null);
   };
@@ -215,17 +232,18 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
 
       const json = await res.json();
       if (!res.ok) {
-        alert(json.error ?? 'Failed to resend invitation.');
+        toast.showError(json.error ?? 'Failed to resend invitation.');
       } else {
         if (json.warning) {
-          alert(json.warning);
+          toast.showWarning(json.warning);
         } else {
-          alert('Invitation resent successfully!');
+          toast.showSuccess('Invitation resent successfully!');
         }
         fetchUsers();
       }
     } catch (err: unknown) {
       console.error(err);
+      toast.showError('An unexpected error occurred while resending the invitation.');
     }
   };
 
@@ -233,19 +251,23 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
     if (!revokeDialog || !revokeDialog.inviteId) return;
 
     try {
+      setRevoking(true);
       const res = await fetch(`/api/invitations/${revokeDialog.inviteId}`, {
         method: 'DELETE',
       });
 
       if (!res.ok) {
         const json = await res.json();
-        alert(json.error ?? 'Failed to revoke invitation.');
+        toast.showError(json.error ?? 'Failed to revoke invitation.');
       } else {
+        toast.showSuccess('Invitation revoked successfully.');
         fetchUsers();
       }
     } catch (err: unknown) {
       console.error(err);
+      toast.showError('An unexpected error occurred while revoking the invitation.');
     } finally {
+      setRevoking(false);
       setRevokeDialog(null);
     }
   };
@@ -329,7 +351,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       </Box>
 
       {/* Filters */}
-      <Card sx={{ borderRadius: 3, mb: 2 }}>
+      <Card sx={{ mb: 2 }}>
         <CardContent sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
           <TextField
             size="small"
@@ -359,23 +381,26 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       </Card>
 
       {/* Table */}
-      <Card sx={{ borderRadius: 3 }}>
+      <Card>
         <TableContainer>
           <Table>
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: '#f8fafc' } }}>
-                <TableCell>User</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Department</TableCell>
-                <TableCell>Required Hours</TableCell>
-                <TableCell>Joined / Invited</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
+            <TableHead sx={{ bgcolor: 'action.hover' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>User</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Role</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Department</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Required Hours</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Joined / Invited</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600, color: 'text.primary' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.map((row, idx) => (
-                <TableRow key={row.isInvite ? `invite-${row.inviteId}-${idx}` : `profile-${row.profileId}`} hover>
+                <TableRow
+                  key={row.isInvite ? `invite-${row.inviteId}-${idx}` : `profile-${row.profileId}`}
+                  sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+                >
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Avatar sx={{ width: 38, height: 38, bgcolor: row.isInvite ? '#94a3b8' : 'primary.main' }}>

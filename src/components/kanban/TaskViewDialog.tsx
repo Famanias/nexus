@@ -62,9 +62,9 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
   const attachments = task.attachments ?? [];
 
   const fileIcon = (type: string) => {
-    if (type === 'image') return <ImageIcon sx={{ fontSize: 18, color: '#6366f1' }} />;
-    if (type === 'video') return <VideoIcon sx={{ fontSize: 18, color: '#f59e0b' }} />;
-    return <AttachIcon sx={{ fontSize: 18, color: '#64748b' }} />;
+    if (type === 'image') return <ImageIcon sx={{ fontSize: 18, color: 'primary.main' }} />;
+    if (type === 'video') return <VideoIcon sx={{ fontSize: 18, color: 'warning.main' }} />;
+    return <AttachIcon sx={{ fontSize: 18, color: 'text.secondary' }} />;
   };
 
   const respondToInvitation = async (status: 'accepted' | 'rejected') => {
@@ -111,9 +111,9 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
 
   const statusChip = (status: 'pending' | 'accepted' | 'rejected') => {
     const map = {
-      pending: { label: 'Pending', color: '#f59e0b', bgcolor: '#fef3c7' },
-      accepted: { label: 'Accepted', color: '#22c55e', bgcolor: '#dcfce7' },
-      rejected: { label: 'Declined', color: '#ef4444', bgcolor: '#fee2e2' },
+      pending: { label: 'Pending', color: '#fbbf24', bgcolor: '#f59e0b1f' },
+      accepted: { label: 'Accepted', color: '#34d399', bgcolor: '#10b9811f' },
+      rejected: { label: 'Declined', color: '#f87171', bgcolor: '#ef44441f' },
     };
     const s = map[status];
     return (
@@ -126,7 +126,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle component="div" sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ flex: 1, pr: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -148,7 +148,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
                 icon={<PendingIcon sx={{ fontSize: 13 }} />}
                 label="You have been invited"
                 size="small"
-                sx={{ bgcolor: '#fef3c7', color: '#b45309', fontWeight: 600, fontSize: 11, height: 22 }}
+                sx={{ bgcolor: '#f59e0b1f', color: '#fbbf24', fontWeight: 600, fontSize: 11, height: 22 }}
               />
             )}
           </Box>
@@ -213,7 +213,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
           {allAssignees.length > 0 ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {allAssignees.map((a) => (
-                <Box key={a.user_id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #f1f5f9' }}>
+                <Box key={a.user_id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                   <Avatar src={a.profile?.avatar_url} sx={{ width: 32, height: 32, fontSize: 13 }}>
                     {a.profile?.full_name?.charAt(0)}
                   </Avatar>
@@ -228,7 +228,7 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
               ))}
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
               {task.assignee ? (
                 <>
                   <Avatar src={task.assignee.avatar_url} sx={{ width: 32, height: 32 }}>
@@ -275,8 +275,8 @@ export default function TaskViewDialog({ open, onClose, onEdit, onArchive, onRef
                     key={att.id}
                     sx={{
                       display: 'flex', alignItems: 'center', gap: 1,
-                      p: 1.5, bgcolor: '#f8fafc', borderRadius: 2,
-                      border: '1px solid #f1f5f9',
+                      p: 1.5, bgcolor: 'action.hover', borderRadius: 1,
+                      border: '1px solid', borderColor: 'divider',
                     }}
                   >
                     {att.file_type === 'image' ? (

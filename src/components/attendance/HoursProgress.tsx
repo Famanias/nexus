@@ -17,7 +17,7 @@ export default function HoursProgress({ summary }: Props) {
   const color = pct >= 100 ? '#22c55e' : pct >= 75 ? '#6366f1' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
   return (
-    <Card sx={{ borderRadius: 3, height: '100%' }}>
+    <Card sx={{ height: '100%' }}>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
           <Box
@@ -50,7 +50,7 @@ export default function HoursProgress({ summary }: Props) {
           sx={{
             height: 12,
             borderRadius: 6,
-            bgcolor: '#f1f5f9',
+            bgcolor: 'action.hover',
             mb: 3,
             '& .MuiLinearProgress-bar': {
               borderRadius: 6,
@@ -60,19 +60,19 @@ export default function HoursProgress({ summary }: Props) {
         />
 
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2 }}>
+          <Box sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
             <Typography variant="caption" color="text.secondary">Logged Hours</Typography>
             <Typography variant="h6" fontWeight={700} color="text.primary">
               {formatHours(summary.total_hours)}
             </Typography>
           </Box>
-          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2 }}>
+          <Box sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
             <Typography variant="caption" color="text.secondary">Required Hours</Typography>
             <Typography variant="h6" fontWeight={700} color="text.primary">
               {formatHours(summary.required_hours)}
             </Typography>
           </Box>
-          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, gridColumn: '1/-1' }}>
+          <Box sx={{ p: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2, gridColumn: '1/-1' }}>
             <Typography variant="caption" color="text.secondary">Remaining Hours</Typography>
             <Typography variant="h6" fontWeight={700} sx={{ color: summary.remaining_hours > 0 ? '#ef4444' : '#22c55e' }}>
               {summary.remaining_hours > 0

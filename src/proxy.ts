@@ -66,7 +66,16 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const role: string = (user?.user_metadata?.role as string) ?? 'ojt';
+  let role: string = (user?.user_metadata?.role as string) ?? 'ojt';
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, system_role')
+      .eq('id', user.id)
+      .single();
+    role = (profile?.system_role ?? profile?.role) ?? role;
+  }
 
   // Helper: build a redirect response while preserving any refreshed auth cookies
   const redirectWithCookies = (url: URL) => {

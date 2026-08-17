@@ -4,6 +4,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import UndoIcon from '@mui/icons-material/Undo';
 import { format } from 'date-fns';
+import { useToast } from '@/lib/context/ToastContext';
+import { SHADOWS } from '@/lib/constants/theme';
+import { priorityColor } from '@/lib/utils/format';
 
 interface FinishedTask {
   id: string;
@@ -26,6 +29,7 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('all');
   const [sort, setSort] = useState('newest');
+  const toast = useToast();
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -48,14 +52,16 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
     try {
       const res = await fetch(`/api/kanban/tasks/${id}/uncomplete`, { method: 'POST' });
       if (res.ok) {
+        toast.showSuccess('Task reopened successfully');
         fetchTasks();
         if (onTaskReopened) onTaskReopened();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to reopen task');
+        toast.showError(data.error || 'Failed to reopen task');
       }
     } catch (err) {
       console.error(err);
+      toast.showError('An unexpected error occurred while reopening the task');
     }
   };
 
@@ -66,16 +72,27 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
   }, [open, timeRange, sort, fetchTasks]);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, p: 0, bgcolor: '#f8fafc' } }}>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: { xs: '100%', sm: 400 },
+          p: 0,
+          bgcolor: 'background.default',
+        },
+      }}
+    >
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TaskAltIcon color="success" />
           <Typography variant="h6" fontWeight={700}>Finished Tasks</Typography>
         </Box>
-        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        <IconButton onClick={onClose} size="small" aria-label="Close drawer"><CloseIcon /></IconButton>
       </Box>
 
-      <Box sx={{ p: 2, display: 'flex', gap: 2, borderBottom: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
+      <Box sx={{ p: 2, display: 'flex', gap: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <FormControl size="small" fullWidth>
           <InputLabel>Time</InputLabel>
           <Select value={timeRange} label="Time" onChange={(e) => setTimeRange(e.target.value)}>
@@ -105,11 +122,15 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
         ) : (
           <Stack spacing={2}>
             {tasks.map(t => (
-              <Box key={t.id} sx={{ bgcolor: '#ffffff', p: 2, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <Box key={t.id} sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'divider', boxShadow: SHADOWS.card }}>
                 <Typography fontWeight={600} gutterBottom>{t.title}</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                  <Chip size="small" label={t.column?.title} sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 500 }} />
-                  <Chip size="small" label={`Priority: ${t.priority}`} color={t.priority === 'high' ? 'error' : t.priority === 'medium' ? 'warning' : 'default'} variant="outlined" />
+                  <Chip size="small" label={t.column?.title} sx={{ bgcolor: 'action.hover', color: 'text.secondary', fontWeight: 500 }} />
+                  <Chip
+                    size="small"
+                    label={t.priority}
+                    sx={{ bgcolor: `${priorityColor(t.priority)}20`, color: priorityColor(t.priority), fontWeight: 600, fontSize: 10, height: 20, textTransform: 'capitalize' }}
+                  />
                 </Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Completed on {format(new Date(t.completed_at), 'MMM d, yyyy h:mm a')}

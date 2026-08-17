@@ -121,7 +121,7 @@ export default function NotificationsClient() {
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-      <Card sx={{ borderRadius: 3, border: '1px solid #eaeaea', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+      <Card>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
           {notifications.length === 0 ? (
             <Box sx={{ py: 8, textAlign: 'center' }}>

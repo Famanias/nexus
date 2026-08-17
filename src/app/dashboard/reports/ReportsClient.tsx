@@ -160,24 +160,24 @@ export default function ReportsClient({ initialReports }: Props) {
         </Grid>
       </Grid>
 
-      <Card sx={{ borderRadius: 3 }}>
+      <Card>
         <CardContent sx={{ p: 0 }}>
           <TableContainer>
             <Table>
-              <TableHead>
-                <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: '#f8fafc' } }}>
-                  <TableCell>OJT</TableCell>
-                  <TableCell>{periodLabel} Hours</TableCell>
-                  <TableCell>Total Hours</TableCell>
-                  <TableCell>Days</TableCell>
-                  <TableCell>Avg/Day</TableCell>
-                  <TableCell sx={{ minWidth: 180 }}>Progress</TableCell>
-                  <TableCell>Status</TableCell>
+              <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>OJT</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>{periodLabel} Hours</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Total Hours</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Days</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Avg/Day</TableCell>
+                  <TableCell sx={{ minWidth: 180, fontWeight: 600, color: 'text.primary' }}>Progress</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {reports.map((r) => (
-                  <TableRow key={r.profile.id} hover>
+                  <TableRow key={r.profile.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Avatar src={r.profile.avatar_url} sx={{ width: 36, height: 36 }}>

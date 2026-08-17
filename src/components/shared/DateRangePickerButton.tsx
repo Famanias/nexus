@@ -310,7 +310,9 @@ export default function DateRangePickerButton({ dateFrom, dateTo, isAllTime, onC
         slotProps={{
           paper: {
             sx: {
-              bgcolor: '#16213e',
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
               borderRadius: 2,
               mt: 0.5,
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
