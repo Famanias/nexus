@@ -42,6 +42,10 @@ export async function getOrgIntegrations(): Promise<{ data?: OrgIntegrationData[
       return { error: 'User does not belong to an organization.' };
     }
 
+    if (profile.role !== 'admin') {
+      return { error: 'Forbidden: Admin access required.' };
+    }
+
     const { data: integrations, error: fetchError } = await supabase
       .from('organization_integrations')
       .select('*')

@@ -47,6 +47,6 @@ export async function syncUserRoleMetadata(
   ]);
 
   if (profileError) return { error: profileError.message };
-  if (metadataError) return { error: metadataError.message };
+  if (metadataError) return { error: metadataError instanceof Error ? metadataError.message : metadataError };
   return {};
 }

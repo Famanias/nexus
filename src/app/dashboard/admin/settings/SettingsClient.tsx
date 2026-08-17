@@ -303,7 +303,7 @@ export default function SettingsClient({
     try {
       const { error: promoteError } = await supabase
         .from('profiles')
-        .update({ role: 'admin' })
+        .update({ role: 'admin', system_role: 'admin' })
         .eq('id', selectedMemberId);
 
       if (promoteError) {
@@ -320,7 +320,7 @@ export default function SettingsClient({
         const originalRole = eligibleMembers.find(m => m.id === selectedMemberId)?.role || 'ojt';
         await supabase
           .from('profiles')
-          .update({ role: originalRole })
+          .update({ role: originalRole, system_role: originalRole })
           .eq('id', selectedMemberId);
 
         setPromotionError(json.error ?? 'Failed to leave organization after promotion.');

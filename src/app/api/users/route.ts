@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       password,
       email_confirm: true,
       user_metadata: { full_name, role, org_id: orgId },
+      app_metadata: { role, org_id: orgId },
     });
 
     if (authError) {

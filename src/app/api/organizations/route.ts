@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName.trim(), role: 'admin' },
+        app_metadata: { role: 'admin' },
       });
 
       if (authError) {
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName.trim(), role: 'ojt' },
+        app_metadata: { role: 'ojt' },
       });
 
       if (authError) {
@@ -190,6 +192,7 @@ export async function POST(request: NextRequest) {
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName.trim(), role: invite.role, org_id: invite.organization_id },
+        app_metadata: { role: invite.role, org_id: invite.organization_id },
       });
 
       if (authError) {
@@ -223,6 +226,7 @@ export async function POST(request: NextRequest) {
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName.trim(), role: 'ojt' },
+        app_metadata: { role: 'ojt' },
       });
 
       if (authError) {
