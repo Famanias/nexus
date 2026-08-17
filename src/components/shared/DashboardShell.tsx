@@ -3,6 +3,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import Sidebar from './Sidebar';
+import Topbar from './Topbar';
 import { Profile } from '@/types';
 
 interface Props {
@@ -15,15 +16,25 @@ export default function DashboardShell({ profile, children }: Props) {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <Sidebar profile={profile} />
       <Box
-        component="main"
-        id="main-content"
         sx={{
           flex: 1,
-          overflow: 'auto',
-          minHeight: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          height: '100dvh',
         }}
       >
-        {children}
+        <Topbar profile={profile} />
+        <Box
+          component="main"
+          id="main-content"
+          sx={{
+            flex: 1,
+            overflow: 'auto',
+          }}
+        >
+          {children}
+        </Box>
       </Box>
     </Box>
   );
