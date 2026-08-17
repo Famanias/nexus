@@ -22,6 +22,7 @@ import { uploadTaskAttachment, deleteTaskAttachments } from '@/actions/attachmen
 import { KanbanTask, KanbanColumn, Profile, TaskAttachment } from '@/types';
 import { canAssignUsers } from '@/lib/utils/kanbanScope';
 import { getFileType, formatFileSize, priorityColor } from '@/lib/utils/format';
+import { PRIMARY_TINTS } from '@/lib/constants/theme';
 import { v4 as uuidv4 } from 'uuid';
 import { emitClientEvent } from '@/lib/automation/client-emitter';
 
@@ -309,9 +310,9 @@ export default function TaskModal({
   };
 
   const fileIcon = (type: string) => {
-    if (type === 'image') return <ImageIcon sx={{ fontSize: 18, color: '#6366f1' }} />;
-    if (type === 'video') return <VideoIcon sx={{ fontSize: 18, color: '#f59e0b' }} />;
-    return <AttachIcon sx={{ fontSize: 18, color: '#64748b' }} />;
+    if (type === 'image') return <ImageIcon sx={{ fontSize: 18, color: 'primary.main' }} />;
+    if (type === 'video') return <VideoIcon sx={{ fontSize: 18, color: 'warning.main' }} />;
+    return <AttachIcon sx={{ fontSize: 18, color: 'text.secondary' }} />;
   };
 
   return (
@@ -441,7 +442,7 @@ export default function TaskModal({
               <Box
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 1.5,
-                  p: 1.5, bgcolor: 'action.hover', borderRadius: 2,
+                  p: 1.5, bgcolor: 'action.hover', borderRadius: 1,
                   border: '1px solid', borderColor: 'divider',
                 }}
               >
@@ -473,7 +474,7 @@ export default function TaskModal({
                     key={att.id}
                     sx={{
                       display: 'flex', alignItems: 'center', gap: 1,
-                      p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5,
+                      p: 1.5, bgcolor: 'action.hover', borderRadius: 1,
                       border: '1px solid', borderColor: 'divider',
                     }}
                   >
@@ -508,7 +509,7 @@ export default function TaskModal({
                   <Box
                     key={upload.id}
                     sx={{
-                      p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'action.hover',
+                      p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', bgcolor: 'action.hover',
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: upload.status !== 'error' ? 0.5 : 0 }}>
@@ -553,7 +554,7 @@ export default function TaskModal({
 
                     {/* Progress bar */}
                     {upload.status === 'uploading' && (
-                      <LinearProgress variant="determinate" value={upload.progress} sx={{ height: 4, borderRadius: 2 }} />
+                      <LinearProgress variant="determinate" value={upload.progress} sx={{ height: 4, borderRadius: 1 }} />
                     )}
                   </Box>
                 ))}
@@ -566,10 +567,10 @@ export default function TaskModal({
               sx={{
                 border: '2px dashed',
                 borderColor: isDragActive ? 'primary.main' : 'divider',
-                borderRadius: 2, p: 3, textAlign: 'center',
+                borderRadius: 1, p: 3, textAlign: 'center',
                 cursor: 'pointer', transition: 'all 0.2s',
-                bgcolor: isDragActive ? 'rgba(99, 102, 241, 0.1)' : 'action.hover',
-                '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(99, 102, 241, 0.05)' },
+                bgcolor: isDragActive ? PRIMARY_TINTS.strong : 'action.hover',
+                '&:hover': { borderColor: 'primary.main', bgcolor: PRIMARY_TINTS.subtle },
               }}
             >
               <input {...getInputProps()} />

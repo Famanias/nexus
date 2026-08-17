@@ -149,12 +149,12 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ArchiveIcon sx={{ color: '#6366f1' }} />
+          <ArchiveIcon sx={{ color: 'primary.main' }} />
           <Typography variant="h6" fontWeight={700}>Task Archives</Typography>
           <Chip
             label={`${tasks.length} task${tasks.length !== 1 ? 's' : ''}`}
             size="small"
-            sx={{ bgcolor: '#f1f5f9', color: '#64748b', fontWeight: 600 }}
+            sx={{ bgcolor: 'action.hover', color: 'text.secondary', fontWeight: 600 }}
           />
         </Box>
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
@@ -165,8 +165,8 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
         {isAdmin && (
           <Box
             sx={{
-              px: 3, py: 2, bgcolor: '#fafafa',
-              borderBottom: '1px solid #f1f5f9',
+              px: 3, py: 2, bgcolor: 'action.hover',
+              borderBottom: '1px solid', borderColor: 'divider',
               display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
             }}
           >
@@ -209,7 +209,7 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
         )}
 
         {!loading && tasks.length === 0 && (
-          <Box sx={{ py: 6, textAlign: 'center', color: '#94a3b8' }}>
+          <Box sx={{ py: 6, textAlign: 'center', color: 'text.disabled' }}>
             <ArchiveIcon sx={{ fontSize: 48, mb: 1, opacity: 0.4 }} />
             <Typography variant="body1">No archived tasks</Typography>
           </Box>
@@ -283,7 +283,7 @@ export default function TaskArchiveDialog({ open, onClose, onRefresh, columns, c
                       <Typography
                         variant="caption"
                         fontWeight={700}
-                        sx={{ color: urgentPurge ? '#ef4444' : remaining < 2 ? '#f59e0b' : '#64748b' }}
+                        sx={{ color: urgentPurge ? 'error.main' : remaining < 2 ? 'warning.main' : 'text.secondary' }}
                       >
                         {urgentPurge ? '<1 day' : `${Math.ceil(remaining)}d`}
                       </Typography>

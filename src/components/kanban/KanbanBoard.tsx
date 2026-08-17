@@ -7,6 +7,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useToast } from '@/lib/context/ToastContext';
+import { PRIMARY_TINTS, SHADOWS } from '@/lib/constants/theme';
 import {
   Box, Button, Typography, CircularProgress, Alert, Badge,
   Autocomplete, TextField, Chip, Tooltip, Avatar,
@@ -591,9 +592,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
       const res = await fetch('/api/kanban/reorder/columns', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          columns: newCols.map((c, i) => ({ id: c.id, position: i })),
-        }),
+        body: JSON.stringify(newCols.map((c, i) => ({ id: c.id, position: i }))),
       });
       if (!res.ok) throw new Error('Failed to reorder column');
       toast.showSuccess(`Column moved ${direction}`);
@@ -647,7 +646,7 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
   }
 
   return (
-    <Box sx={{ p: 3, height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ p: 3, height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -837,9 +836,9 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
                     gap: 1,
                     transition: 'all 0.2s',
                     '&:hover': {
-                      bgcolor: 'rgba(99, 102, 241, 0.1)',
+                      bgcolor: PRIMARY_TINTS.strong,
                       borderColor: 'primary.main',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                      boxShadow: SHADOWS.pop,
                     },
                   }}
                 >

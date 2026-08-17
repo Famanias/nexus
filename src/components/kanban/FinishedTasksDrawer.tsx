@@ -5,6 +5,8 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import UndoIcon from '@mui/icons-material/Undo';
 import { format } from 'date-fns';
 import { useToast } from '@/lib/context/ToastContext';
+import { SHADOWS } from '@/lib/constants/theme';
+import { priorityColor } from '@/lib/utils/format';
 
 interface FinishedTask {
   id: string;
@@ -120,11 +122,15 @@ export default function FinishedTasksDrawer({ open, onClose, onTaskReopened }: P
         ) : (
           <Stack spacing={2}>
             {tasks.map(t => (
-              <Box key={t.id} sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+              <Box key={t.id} sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'divider', boxShadow: SHADOWS.card }}>
                 <Typography fontWeight={600} gutterBottom>{t.title}</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                   <Chip size="small" label={t.column?.title} sx={{ bgcolor: 'action.hover', color: 'text.secondary', fontWeight: 500 }} />
-                  <Chip size="small" label={`Priority: ${t.priority}`} color={t.priority === 'high' ? 'error' : t.priority === 'medium' ? 'warning' : 'default'} variant="outlined" />
+                  <Chip
+                    size="small"
+                    label={t.priority}
+                    sx={{ bgcolor: `${priorityColor(t.priority)}20`, color: priorityColor(t.priority), fontWeight: 600, fontSize: 10, height: 20, textTransform: 'capitalize' }}
+                  />
                 </Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Completed on {format(new Date(t.completed_at), 'MMM d, yyyy h:mm a')}

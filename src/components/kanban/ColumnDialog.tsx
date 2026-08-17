@@ -89,7 +89,7 @@ export default function ColumnDialog({ open, onClose, onSave, editingColumn }: P
         {/* Preview */}
         <Box
           sx={{
-            mt: 2, p: 1.5, borderRadius: 2, borderLeft: `4px solid ${color}`,
+            mt: 2, p: 1.5, borderRadius: 1, borderLeft: `4px solid ${color}`,
             bgcolor: `${color}15`,
           }}
         >

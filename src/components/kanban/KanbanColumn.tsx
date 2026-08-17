@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
-import { BORDER_RADIUS, BORDER_RADIUS_PX } from '@/lib/constants/theme';
+import { BORDER_RADIUS_PX } from '@/lib/constants/theme';
 import type { KanbanColumn, KanbanTask } from '@/types';
 import KanbanTaskCard from './KanbanTask';
 
@@ -76,7 +76,7 @@ export default function KanbanColumnComponent({
     transform, transition, isDragging: isSortableDragging,
   } = useSortable({ id: column.id });
 
-  const { setNodeRef: setDroppableRef } = useDroppable({ id: column.id });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: column.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -96,7 +96,7 @@ export default function KanbanColumnComponent({
         minWidth: 320,
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: 'calc(100dvh - 180px)',
+        maxHeight: '100%',
         opacity: isDragging ? 0.8 : 1,
       }}
     >
@@ -109,6 +109,11 @@ export default function KanbanColumnComponent({
           bgcolor: 'background.paper',
           border: `2px solid ${column.color}30`,
           boxShadow: `0 4px 16px ${column.color}15`,
+          transition: 'border-color 0.2s, box-shadow 0.2s',
+          ...(isOver && {
+            borderColor: column.color,
+            boxShadow: `0 0 0 2px ${column.color}55, 0 4px 16px ${column.color}15`,
+          }),
         }}
       >
         {/* Column Header — draggable */}
@@ -235,7 +240,7 @@ export default function KanbanColumnComponent({
             <Box
               sx={{
                 py: 4, textAlign: 'center', border: '2px dashed',
-                borderColor: 'divider', borderRadius: 2, color: 'text.secondary',
+                borderColor: 'divider', borderRadius: 1, color: 'text.secondary',
               }}
             >
               <Typography variant="body2">No tasks yet</Typography>
@@ -254,7 +259,7 @@ export default function KanbanColumnComponent({
             <Button
               fullWidth size="small" startIcon={<AddIcon />}
               onClick={onAddTask}
-              sx={{ color: 'text.secondary', justifyContent: 'flex-start', borderRadius: 2 }}
+              sx={{ color: 'text.secondary', justifyContent: 'flex-start', borderRadius: 1 }}
             >
               Add task
             </Button>

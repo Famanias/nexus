@@ -21,8 +21,10 @@ import {
 } from '@mui/icons-material';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isBefore, startOfDay } from 'date-fns';
 import { KanbanTask } from '@/types';
 import { formatDate, priorityColor } from '@/lib/utils/format';
+import { SHADOWS } from '@/lib/constants/theme';
 import { useToast } from '@/lib/context/ToastContext';
 
 interface Props {
@@ -92,6 +94,7 @@ export default function KanbanTaskCard({
   const pColor = priorityColor(task.priority);
   const assignedOjts = task.assigned_ojts ?? [];
   const attachments = task.attachments ?? [];
+  const isOverdue = task.due_date ? isBefore(new Date(task.due_date), startOfDay(new Date())) : false;
 
   return (
     <Box ref={setNodeRef} style={style}>
@@ -102,18 +105,19 @@ export default function KanbanTaskCard({
         tabIndex={0}
         aria-roledescription="sortable task"
         sx={{
-          borderRadius: 2,
+          borderRadius: 1,
           cursor: isDragging ? 'grabbing' : 'pointer',
           boxShadow: isDragging
-            ? '0 16px 32px rgba(0,0,0,0.4)'
-            : '0 1px 3px rgba(0,0,0,0.2)',
+            ? SHADOWS.drag
+            : SHADOWS.card,
           bgcolor: 'background.paper',
           border: '1px solid',
           borderColor: 'divider',
-          transition: 'box-shadow 0.2s, transform 0.1s',
+          transition: 'box-shadow 0.2s, transform 0.15s, border-color 0.2s',
           '&:hover': {
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            boxShadow: SHADOWS.hover,
             borderColor: 'primary.light',
+            transform: 'translateY(-1px)',
           },
           borderLeft: `4px solid ${pColor}`,
         }}
@@ -175,7 +179,19 @@ export default function KanbanTaskCard({
           </Box>
 
           {/* Title */}
-          <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ mb: 0.5, lineHeight: 1.4 }}>
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            color="text.primary"
+            sx={{
+              mb: 0.5,
+              lineHeight: 1.4,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
             {task.title}
           </Typography>
 
@@ -200,9 +216,12 @@ export default function KanbanTaskCard({
           {/* Due date */}
           {task.due_date && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-              <DateIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
-              <Typography variant="caption" color="text.secondary">
-                {formatDate(task.due_date)}
+              <DateIcon sx={{ fontSize: 12, color: isOverdue ? 'error.main' : 'text.secondary' }} />
+              <Typography
+                variant="caption"
+                sx={{ color: isOverdue ? 'error.main' : 'text.secondary', fontWeight: isOverdue ? 700 : 400 }}
+              >
+                {isOverdue ? 'Overdue · ' : ''}{formatDate(task.due_date)}
               </Typography>
             </Box>
           )}
