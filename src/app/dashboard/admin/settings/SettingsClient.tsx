@@ -98,6 +98,7 @@ export default function SettingsClient({
   const toast = useToast();
   const { organization: authOrg } = useAuth();
   const organization = authOrg || serverOrganization;
+  const [inviteCode, setInviteCode] = useState<string>(organization?.invite_code ?? '');
   const router = useRouter();
 
   const fetchSettings = useCallback(async () => {
@@ -116,8 +117,8 @@ export default function SettingsClient({
   }, [supabase]);
 
   const handleCopyInviteCode = () => {
-    if (organization?.invite_code) {
-      navigator.clipboard.writeText(organization.invite_code);
+    if (inviteCode) {
+      navigator.clipboard.writeText(inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -129,9 +130,9 @@ export default function SettingsClient({
       const result = await regenerateInviteCode();
       if (result.error) {
         toast.showError(result.error);
-      } else {
+      } else if (result.code) {
+        setInviteCode(result.code);
         toast.showSuccess('Invite code regenerated successfully!');
-        router.refresh();
       }
     } finally {
       setRegenerating(false);
@@ -378,7 +379,7 @@ export default function SettingsClient({
                   py: 0.25,
                 }}
               >
-                {organization?.invite_code}
+                {inviteCode}
               </Box>
             )}
           >
