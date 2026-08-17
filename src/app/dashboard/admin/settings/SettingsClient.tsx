@@ -62,9 +62,11 @@ function SettingRow({
 export default function SettingsClient({
   initialSettings,
   serverOrganization,
+  profile,
 }: {
   initialSettings: SiteSettings;
   serverOrganization: Organization | null;
+  profile: Profile | null;
 }) {
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
   const [form, setForm] = useState({
@@ -94,7 +96,7 @@ export default function SettingsClient({
 
   const supabase = createClient();
   const toast = useToast();
-  const { organization: authOrg, refreshProfile, profile } = useAuth();
+  const { organization: authOrg } = useAuth();
   const organization = authOrg || serverOrganization;
   const router = useRouter();
 
@@ -129,7 +131,7 @@ export default function SettingsClient({
         toast.showError(result.error);
       } else {
         toast.showSuccess('Invite code regenerated successfully!');
-        await refreshProfile();
+        router.refresh();
       }
     } finally {
       setRegenerating(false);

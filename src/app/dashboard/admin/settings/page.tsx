@@ -49,7 +49,7 @@ export default async function SiteSettingsPage() {
 
   return (
     <RequireOrganization featureName="Site Settings" serverProfile={fullProfile}>
-      <SettingsClient initialSettings={settings!} serverOrganization={organization} />
+      <SettingsClient initialSettings={settings!} serverOrganization={organization} profile={fullProfile} />
     </RequireOrganization>
   );
 }

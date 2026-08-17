@@ -18,9 +18,9 @@ import {
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { Profile, Notification } from '@/types';
 import { roleLabel, formatDateTime } from '@/lib/utils/format';
-import { useAuth } from '@/lib/context/AuthContext';
 
 const POPOVER_WIDTH = 360;
 const SETTINGS_PATH = '/dashboard/admin/settings';
@@ -48,7 +48,7 @@ export default function Topbar({ profile }: { profile: Profile }) {
   const [markingRead, setMarkingRead] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { signOut } = useAuth();
+  const supabase = createClient();
 
   const notifBtnRef = useRef<HTMLButtonElement>(null);
   const profileBtnRef = useRef<HTMLButtonElement>(null);
@@ -139,7 +139,7 @@ export default function Topbar({ profile }: { profile: Profile }) {
 
   const handleSignOut = async () => {
     setProfileAnchor(null);
-    await signOut();
+    await supabase.auth.signOut();
     router.refresh();
     router.push('/login');
   };
