@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Profile, UserRole, Invitation } from '@/types';
 import { roleLabel, formatDate } from '@/lib/utils/format';
 import { useToast } from '@/lib/context/ToastContext';
+import { syncUserRoleMetadata } from '@/actions/users';
 
 interface UserFormData {
   full_name: string;
@@ -182,6 +183,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
         .update({
           full_name: formData.full_name,
           role: formData.role,
+          system_role: formData.role,
           department: formData.department || null,
           required_hours: formData.required_hours,
           is_active: formData.is_active,
@@ -191,7 +193,12 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       if (updateError) {
         setError(updateError.message);
       } else {
-        toast.showSuccess('User updated successfully.');
+        const { error: syncError } = await syncUserRoleMetadata(editingUser.id, formData.role);
+        if (syncError) {
+          toast.showWarning(`Profile updated, but role sync failed: ${syncError}`);
+        } else {
+          toast.showSuccess('User updated successfully.');
+        }
         setEditDialogOpen(false);
         fetchUsers();
       }
