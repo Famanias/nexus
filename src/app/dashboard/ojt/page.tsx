@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { Profile, AttendanceSummary } from '@/types';
 import OJTClient from './OJTClient';
 
@@ -14,22 +14,12 @@ export default async function OJTPage() {
 
   const userId = user!.id;
   const today = format(new Date(), 'yyyy-MM-dd');
-  const month = format(new Date(), 'yyyy-MM');
-  const start = format(startOfMonth(new Date(month + '-01')), 'yyyy-MM-dd');
-  const end = format(endOfMonth(new Date(month + '-01')), 'yyyy-MM-dd');
 
-  const [{ data: profile }, { data: todayRecord }, { data: allAttendance }, { data: monthRecords }] =
+  const [{ data: profile }, { data: todayRecord }, { data: allAttendance }] =
     await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('attendance').select('*').eq('user_id', userId).eq('date', today).maybeSingle(),
       supabase.from('attendance').select('total_hours').eq('user_id', userId).not('total_hours', 'is', null),
-      supabase
-        .from('attendance')
-        .select('*, profile:profiles(id, full_name, email, avatar_url, department)')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end)
-        .order('date', { ascending: false }),
     ]);
 
   const required = (profile as Profile)?.required_hours ?? 600;
@@ -48,7 +38,6 @@ export default async function OJTPage() {
       profile={profile as Profile}
       initialTodayRecord={todayRecord}
       initialSummary={summary}
-      initialRecords={monthRecords ?? []}
     />
   );
 }

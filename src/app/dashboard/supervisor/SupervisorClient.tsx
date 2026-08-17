@@ -19,7 +19,6 @@ import { Profile, Attendance } from '@/types';
 import { formatHours, formatTime } from '@/lib/utils/format';
 import { format } from 'date-fns';
 import StatCard from '@/components/shared/StatCard';
-import AttendanceTable from '@/components/attendance/AttendanceTable';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Alert } from '@mui/material';
@@ -208,9 +207,6 @@ export default function SupervisorClient({ summaries, stats }: Props) {
           </TableContainer>
         </CardContent>
       </Card>
-
-      {/* All Attendance Records */}
-      <AttendanceTable showUser={true} />
     </Box>
   );
 }
