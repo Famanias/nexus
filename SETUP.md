@@ -192,7 +192,7 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxx
 
 # n8n Automation Integration
 N8N_URL=https://n8n-production-xxxx.up.railway.app
-N8N_API_KEY=af5f62c36892221962ff70ba28c38747e72f5f4ff1ba6eb19717cb7d33fe1bcc
+N8N_API_KEY=<your-secret-n8n-api-key>
 AUTOMATION_ENABLED=true
 AUTOMATION_LOG_LEVEL=full
 AUTOMATION_TIMEOUT=10000

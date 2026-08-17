@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         role,
         org_id: orgId,
         department: department || null,
-        required_hours: required_hours ?? 600,
+        required_hours: role === 'ojt' ? (required_hours ?? 600) : 0,
         is_active: is_active ?? true,
       }, { onConflict: 'id' });
 
