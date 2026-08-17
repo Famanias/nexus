@@ -182,7 +182,7 @@ export default function Topbar({ profile }: { profile: Profile }) {
         justifyContent: 'space-between',
         gap: 1,
         px: 3,
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         borderBottom: '1px solid',
         borderColor: 'divider',
         position: 'sticky',

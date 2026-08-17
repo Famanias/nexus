@@ -22,6 +22,7 @@ export default function DashboardShell({ profile, children }: Props) {
           flexDirection: 'column',
           minWidth: 0,
           height: '100dvh',
+          bgcolor: 'background.paper',
         }}
       >
         <Topbar profile={profile} />

@@ -80,6 +80,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           color: 'text.primary',
           borderRight: '1px solid',
           borderColor: 'divider',
+          borderRadius: 0,
           height: '100dvh',
         },
       }}
@@ -91,8 +92,8 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
           px: collapsed ? 1 : 2,
-          py: 2,
-          minHeight: 64,
+          py: 0,
+          height: 64,
         }}
       >
         {!collapsed && (
