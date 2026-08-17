@@ -539,7 +539,7 @@ export default function TaskModal({
                           <Typography variant="caption" color="text.secondary">{upload.progress}%</Typography>
                         </Box>
                       )}
-                      {upload.status === 'success' && (
+                      {upload.status === 'done' && (
                         <Chip label="Uploaded" color="success" size="small" sx={{ height: 20, fontSize: 11 }} />
                       )}
                       {upload.status === 'error' && (
