@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { isWithinRadius } from '@/lib/utils/distance';
 import { resolveDay, isValidTimezone } from '@/lib/attendance/day';
 import { getSession, getEffectiveRole } from '@/lib/session';
+import { getCachedSiteSettings } from '@/lib/cache';
 import type { Attendance } from '@/types';
 
 interface ClockActionParams {
@@ -31,6 +32,9 @@ interface ClockOutParams extends ClockActionParams {
  * Clock-in. Timestamps are always derived from the server clock so
  * clients cannot backdate or forge attendance rows. The attendance day
  * is resolved from the server clock plus the client's timezone.
+ *
+ * Validation checks (active session and location radius) execute concurrently
+ * to minimize latency.
  */
 export async function clockIn(params: ClockActionParams = {}): Promise<ClockInResult> {
   const { user, profile } = await getSession();
@@ -41,8 +45,6 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
     return { error: 'Only OJTs can clock in/out.' };
   }
 
-  const admin = await createAdminClient();
-
   const now = new Date();
   let date: string;
   try {
@@ -51,21 +53,25 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
     return { error: 'Your timezone could not be determined. Please enable timezone access and try again.' };
   }
 
-  // Ensure user is not currently in an active open session for today
-  const { data: activeRows } = await admin
-    .from('attendance')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('date', date)
-    .is('clock_out', null)
-    .order('clock_in', { ascending: false })
-    .limit(1);
+  const admin = await createAdminClient();
 
-  if (activeRows && activeRows.length > 0) {
+  // Execute active session check and location resolution in parallel
+  const [activeRowsResult, loc] = await Promise.all([
+    admin
+      .from('attendance')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('date', date)
+      .is('clock_out', null)
+      .order('clock_in', { ascending: false })
+      .limit(1),
+    resolveLocation(profile?.org_id, params),
+  ]);
+
+  if (activeRowsResult.data && activeRowsResult.data.length > 0) {
     return { error: 'You are already clocked in. Please clock out of your active session first.' };
   }
 
-  const loc = await resolveLocation(admin, profile?.org_id, params);
   if (loc.error) return { error: loc.error };
 
   const { data, error } = await admin
@@ -89,6 +95,8 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
 /**
  * Clock-out. The server records the clock-out timestamp and recomputes
  * the total hours via the DB trigger.
+ *
+ * Record lookup and location resolution run concurrently.
  */
 export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResult> {
   const { user, profile } = await getSession();
@@ -101,34 +109,34 @@ export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResu
 
   const admin = await createAdminClient();
 
-  let targetId = params.attendanceId;
-  if (!targetId) {
-    const { data: activeRows } = await admin
-      .from('attendance')
-      .select('id')
-      .eq('user_id', user.id)
-      .is('clock_out', null)
-      .order('clock_in', { ascending: false })
-      .limit(1);
+  // Single-query active record fetch running concurrently with location resolution
+  const recordPromise = params.attendanceId
+    ? admin
+        .from('attendance')
+        .select('id, user_id, clock_out')
+        .eq('id', params.attendanceId)
+        .maybeSingle()
+    : admin
+        .from('attendance')
+        .select('id, user_id, clock_out')
+        .eq('user_id', user.id)
+        .is('clock_out', null)
+        .order('clock_in', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!activeRows || activeRows.length === 0) {
-      return { error: 'No active clock-in session found.' };
-    }
-    targetId = activeRows[0].id;
+  const [recordResult, loc] = await Promise.all([
+    recordPromise,
+    resolveLocation(profile?.org_id, params),
+  ]);
+
+  const record = recordResult.data;
+  if (!record) {
+    return { error: params.attendanceId ? 'Attendance record not found.' : 'No active clock-in session found.' };
   }
-
-  const { data: record } = await admin
-    .from('attendance')
-    .select('id, user_id, clock_out')
-    .eq('id', targetId)
-    .single();
-
-  if (!record) return { error: 'Attendance record not found.' };
   if (record.user_id !== user.id) return { error: 'Forbidden' };
   if (record.clock_out) return { error: 'You have already clocked out.' };
 
-
-  const loc = await resolveLocation(admin, profile?.org_id, params);
   if (loc.error) return { error: loc.error };
 
   const { data, error } = await admin
@@ -142,7 +150,7 @@ export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResu
         ? { timezone: params.timezone }
         : {}),
     })
-    .eq('id', targetId)
+    .eq('id', record.id)
     .select()
     .single();
 
@@ -159,22 +167,15 @@ interface ResolvedLocation {
 
 /**
  * Enforce the location radius server-side when the org requires it.
- * GPS coordinates are still reported by the client, but the radius check
- * runs against the DB's authoritative site settings so it cannot be
- * bypassed by posting fake coordinates directly to the API.
+ * Leverages cached site settings to eliminate database round trips.
  */
 async function resolveLocation(
-  admin: Awaited<ReturnType<typeof createAdminClient>>,
   orgId: string | null | undefined,
   params: ClockActionParams
 ): Promise<ResolvedLocation> {
   if (!orgId) return { latitude: params.latitude ?? null, longitude: params.longitude ?? null, distance: null };
 
-  const { data: settings } = await admin
-    .from('site_settings')
-    .select('latitude, longitude, radius_meters, require_location_verification')
-    .eq('org_id', orgId)
-    .maybeSingle();
+  const settings = await getCachedSiteSettings(orgId);
 
   if (!settings?.require_location_verification) {
     return { latitude: params.latitude ?? null, longitude: params.longitude ?? null, distance: null };
