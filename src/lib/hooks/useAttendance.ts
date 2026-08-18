@@ -1,19 +1,35 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Attendance, AttendanceSummary } from '@/types';
-import { computeAttendanceSummary } from '@/lib/attendance/summary';
+import { getAttendanceSummary } from '@/lib/attendance/summary';
 import { format } from 'date-fns';
 
-export function useAttendance(userId?: string) {
-  const [todayRecords, setTodayRecords] = useState<Attendance[]>([]);
-  const [history, setHistory] = useState<Attendance[]>([]);
-  const [summary, setSummary] = useState<AttendanceSummary | null>(null);
-  const [loading, setLoading] = useState<boolean>(Boolean(userId));
-  const supabase = useMemo(() => createClient(), []);
+export interface UseAttendanceOptions {
+  initialTodayRecords?: Attendance[];
+  initialSummary?: AttendanceSummary | null;
+  initialHistory?: Attendance[];
+  skipMountFetch?: boolean;
+}
 
+export function useAttendance(userId?: string, options?: UseAttendanceOptions) {
+  const [todayRecords, setTodayRecords] = useState<Attendance[]>(
+    options?.initialTodayRecords ?? []
+  );
+  const [history, setHistory] = useState<Attendance[]>(
+    options?.initialHistory ?? []
+  );
+  const [summary, setSummary] = useState<AttendanceSummary | null>(
+    options?.initialSummary ?? null
+  );
+  const [loading, setLoading] = useState<boolean>(
+    !options?.initialSummary && !options?.skipMountFetch && Boolean(userId)
+  );
+
+  const supabase = useMemo(() => createClient(), []);
   const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+  const initialMounted = useRef(false);
 
   const fetchTodayRecords = useCallback(async () => {
     if (!userId) return;
@@ -42,24 +58,12 @@ export function useAttendance(userId?: string) {
     if (!userId) return;
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('required_hours, role, system_role')
+      .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
-    const { data: attendanceData } = await supabase
-      .from('attendance')
-      .select('total_hours, date')
-      .eq('user_id', userId)
-      .not('total_hours', 'is', null);
-
-    setSummary(
-      computeAttendanceSummary({
-        rows: attendanceData ?? [],
-        requiredHours: profileData?.required_hours ?? 0,
-        role: profileData?.role,
-        systemRole: profileData?.system_role,
-      })
-    );
+    const sum = await getAttendanceSummary(supabase, userId, profileData ?? undefined);
+    setSummary(sum);
   }, [userId, supabase]);
 
   const refresh = useCallback(async () => {
@@ -71,6 +75,16 @@ export function useAttendance(userId?: string) {
   useEffect(() => {
     let isMounted = true;
     if (!userId) return;
+
+    // Skip mount auto-fetch if initial data was provided or skip flag set
+    const shouldSkipMount =
+      !initialMounted.current &&
+      (options?.skipMountFetch || options?.initialSummary !== undefined);
+    initialMounted.current = true;
+
+    if (shouldSkipMount) {
+      return;
+    }
 
     const loadData = async () => {
       await Promise.allSettled([
@@ -88,7 +102,7 @@ export function useAttendance(userId?: string) {
     return () => {
       isMounted = false;
     };
-  }, [userId, fetchTodayRecords, fetchHistory, fetchSummary]);
+  }, [userId, options?.skipMountFetch, options?.initialSummary, fetchTodayRecords, fetchHistory, fetchSummary]);
 
   // Active open session without clock_out
   const activeRecord = useMemo(

@@ -57,9 +57,17 @@ interface DisplayRow {
   isActive: boolean;
 }
 
-export default function UsersClient({ initialUsers }: { initialUsers: Profile[] }) {
+interface UsersClientProps {
+  initialUsers: Profile[];
+  initialInvitations?: Invitation[];
+}
+
+export default function UsersClient({
+  initialUsers,
+  initialInvitations = [],
+}: UsersClientProps) {
   const [users, setUsers] = useState<Profile[]>(initialUsers);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const toast = useToast();
@@ -104,9 +112,17 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
     }
   }, [supabase]);
 
+  const initialMountRef = React.useRef(false);
   useEffect(() => {
+    if (!initialMountRef.current) {
+      initialMountRef.current = true;
+      if (initialUsers && initialUsers.length > 0) {
+        return;
+      }
+    }
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers, initialUsers]);
+
 
   const openInvite = () => {
     setInviteEmail('');

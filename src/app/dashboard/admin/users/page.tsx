@@ -9,15 +9,30 @@ export default async function UsersPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const { data: users } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const invitationsPromise = profile.org_id
+    ? supabase
+        .from('invitations')
+        .select('*')
+        .eq('organization_id', profile.org_id)
+        .order('created_at', { ascending: false })
+    : Promise.resolve({ data: [] });
+
+  const [{ data: users }, { data: invitations }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    invitationsPromise,
+  ]);
 
   return (
     <RequireOrganization featureName="User Management" serverProfile={profile}>
-      <UsersClient initialUsers={users ?? []} />
+      <UsersClient
+        initialUsers={users ?? []}
+        initialInvitations={invitations ?? []}
+      />
     </RequireOrganization>
   );
 }
+
 

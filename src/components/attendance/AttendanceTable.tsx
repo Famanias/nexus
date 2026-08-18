@@ -55,10 +55,18 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
     setLoading(false);
   }, [userId, supabase]);
 
+  const initialMountRef = React.useRef(false);
   useEffect(() => {
+    if (!initialMountRef.current) {
+      initialMountRef.current = true;
+      if (initialRecords) {
+        return;
+      }
+    }
     fetchRecords('', '', true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
 
   const filtered = records.filter((r) => {
     if (!search) return true;
