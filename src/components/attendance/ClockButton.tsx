@@ -95,7 +95,7 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         return;
       }
 
-      const result = await clockIn({ latitude: lat, longitude: lng });
+      const result = await clockIn({ latitude: lat, longitude: lng, date: today });
 
       if (result.error) {
         setError(result.error);

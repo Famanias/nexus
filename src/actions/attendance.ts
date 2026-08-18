@@ -7,6 +7,12 @@ import type { Attendance } from '@/types';
 interface ClockActionParams {
   latitude?: number | null;
   longitude?: number | null;
+  /**
+   * The calendar date (yyyy-MM-dd) as seen by the client. Attendance rows are
+   * bucketed by this date everywhere in the UI (useAttendance, dashboards), so
+   * it must match the client's local date rather than UTC.
+   */
+  date?: string;
 }
 
 interface ClockInResult {
@@ -39,7 +45,10 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
     .single();
 
   const now = new Date();
-  const date = now.toISOString().slice(0, 10);
+  const date =
+    params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
+      ? params.date
+      : now.toISOString().slice(0, 10);
 
   const { data: existing } = await admin
     .from('attendance')
