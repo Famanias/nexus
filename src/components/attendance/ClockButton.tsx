@@ -14,6 +14,7 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useLocation } from '@/lib/hooks/useLocation';
+import { getClientTimezone } from '@/lib/attendance/day';
 import { createClient } from '@/lib/supabase/client';
 import { formatTime, formatHours } from '@/lib/utils/format';
 import { Attendance, SiteSettings } from '@/types';
@@ -85,6 +86,7 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
     }
 
     const today = format(new Date(), 'yyyy-MM-dd');
+    const timezone = getClientTimezone();
 
     if (!isClockedIn) {
       // CLOCK IN
@@ -95,7 +97,7 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         return;
       }
 
-      const result = await clockIn({ latitude: lat, longitude: lng });
+      const result = await clockIn({ latitude: lat, longitude: lng, timezone });
 
       if (result.error) {
         setError(result.error);
@@ -117,6 +119,7 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         attendanceId: todayRecord!.id,
         latitude: lat,
         longitude: lng,
+        timezone,
       });
 
       if (result.error) {

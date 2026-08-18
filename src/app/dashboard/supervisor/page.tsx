@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Profile } from '@/types';
 import { format } from 'date-fns';
+import { completionPercent } from '@/lib/attendance/summary';
 import SupervisorClient from './SupervisorClient';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default async function SupervisorPage() {
     const total_hours = ojtAttendance.reduce((acc: number, a) => acc + (a.total_hours ?? 0), 0);
     const total_days = ojtAttendance.length;
     const today_record = (todayAttendance ?? []).find((a) => a.user_id === ojt.id);
-    const completion_pct = Math.min(100, (total_hours / ojt.required_hours) * 100);
+    const completion_pct = completionPercent(total_hours, ojt.required_hours);
     return { profile: ojt, total_hours, total_days, today_record, completion_pct };
   });
 

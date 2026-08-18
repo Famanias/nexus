@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Attendance, AttendanceSummary } from '@/types';
+import { computeAttendanceSummary } from '@/lib/attendance/summary';
 import { format } from 'date-fns';
 
 export function useAttendance(userId?: string) {
@@ -40,7 +41,7 @@ export function useAttendance(userId?: string) {
     if (!userId) return;
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('required_hours')
+      .select('required_hours, role, system_role')
       .eq('id', userId)
       .single();
 
@@ -50,19 +51,14 @@ export function useAttendance(userId?: string) {
       .eq('user_id', userId)
       .not('total_hours', 'is', null);
 
-    const required = profileData?.required_hours ?? 600;
-    const totalHours = (attendanceData ?? []).reduce(
-      (acc, row) => acc + (row.total_hours ?? 0),
-      0
+    setSummary(
+      computeAttendanceSummary({
+        rows: attendanceData ?? [],
+        requiredHours: profileData?.required_hours ?? 0,
+        role: profileData?.role,
+        systemRole: profileData?.system_role,
+      })
     );
-
-    setSummary({
-      total_days: (attendanceData ?? []).length,
-      total_hours: totalHours,
-      required_hours: required,
-      remaining_hours: Math.max(0, required - totalHours),
-      completion_percentage: Math.min(100, (totalHours / required) * 100),
-    });
   }, [userId, supabase]);
 
   const refresh = useCallback(async () => {

@@ -15,6 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { Attendance, Profile } from '@/types';
 import { formatDate, formatTime, formatHours } from '@/lib/utils/format';
+import { formatTimeInZone } from '@/lib/attendance/day';
 import DateRangePickerButton from '@/components/shared/DateRangePickerButton';
 
 interface Props {
@@ -64,13 +65,18 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
     return name.includes(search.toLowerCase()) || r.date.includes(search);
   });
 
+  const clockTime = (iso: string | undefined, timezone?: string) => {
+    if (!iso) return '—';
+    return timezone ? formatTimeInZone(iso, timezone) : formatTime(iso);
+  };
+
   const exportCSV = () => {
     const headers = ['Date', 'Name', 'Clock In', 'Clock Out', 'Total Hours', 'Status'];
     const rows = filtered.map((r) => [
       r.date,
       r.profile?.full_name ?? 'N/A',
-      r.clock_in ? formatTime(r.clock_in) : '',
-      r.clock_out ? formatTime(r.clock_out) : '',
+      clockTime(r.clock_in, r.timezone) === '—' ? '' : clockTime(r.clock_in, r.timezone),
+      clockTime(r.clock_out, r.timezone) === '—' ? '' : clockTime(r.clock_out, r.timezone),
       r.total_hours ? formatHours(r.total_hours) : '',
       r.clock_out ? 'Complete' : r.clock_in ? 'In Progress' : 'Absent',
     ]);
@@ -187,10 +193,10 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
                         </TableCell>
                       )}
                       <TableCell>
-                        {record.clock_in ? formatTime(record.clock_in) : '—'}
+                        {clockTime(record.clock_in, record.timezone)}
                       </TableCell>
                       <TableCell>
-                        {record.clock_out ? formatTime(record.clock_out) : '—'}
+                        {clockTime(record.clock_out, record.timezone)}
                       </TableCell>
                       <TableCell>
                         <Typography

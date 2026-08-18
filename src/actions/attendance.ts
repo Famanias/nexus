@@ -2,11 +2,20 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isWithinRadius } from '@/lib/utils/distance';
+import { resolveDay, isValidTimezone } from '@/lib/attendance/day';
+import { isOjt } from '@/lib/attendance/eligibility';
 import type { Attendance } from '@/types';
 
 interface ClockActionParams {
   latitude?: number | null;
   longitude?: number | null;
+  /**
+   * The clocking OJT's computer timezone (IANA name, e.g. "Asia/Manila",
+   * with a UTC/Etc offset fallback). The attendance day is derived by the
+   * server from its own clock plus this timezone, so clients cannot choose
+   * their bucket date.
+   */
+  timezone?: string;
 }
 
 interface ClockInResult {
@@ -20,7 +29,8 @@ interface ClockOutParams extends ClockActionParams {
 
 /**
  * Clock-in. Timestamps are always derived from the server clock so
- * clients cannot backdate or forge attendance rows.
+ * clients cannot backdate or forge attendance rows. The attendance day
+ * is resolved from the server clock plus the client's timezone.
  */
 export async function clockIn(params: ClockActionParams = {}): Promise<ClockInResult> {
   const supabase = await createClient();
@@ -34,12 +44,21 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id')
+    .select('org_id, role, system_role')
     .eq('id', user.id)
     .single();
 
+  if (!isOjt(profile?.role, profile?.system_role)) {
+    return { error: 'Only OJTs can clock in/out.' };
+  }
+
   const now = new Date();
-  const date = now.toISOString().slice(0, 10);
+  let date: string;
+  try {
+    date = resolveDay(now, params.timezone ?? '').date;
+  } catch {
+    return { error: 'Your timezone could not be determined. Please enable timezone access and try again.' };
+  }
 
   const { data: existing } = await admin
     .from('attendance')
@@ -64,6 +83,7 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
       user_id: user.id,
       clock_in: now.toISOString(),
       date,
+      timezone: params.timezone,
       clock_in_latitude: loc.latitude,
       clock_in_longitude: loc.longitude,
       clock_in_distance_meters: loc.distance,
@@ -101,9 +121,13 @@ export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id')
+    .select('org_id, role, system_role')
     .eq('id', user.id)
     .single();
+
+  if (!isOjt(profile?.role, profile?.system_role)) {
+    return { error: 'Only OJTs can clock in/out.' };
+  }
 
   const loc = await resolveLocation(admin, profile?.org_id, params);
   if (loc.error) return { error: loc.error };
@@ -115,6 +139,9 @@ export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
       clock_out_latitude: loc.latitude,
       clock_out_longitude: loc.longitude,
       clock_out_distance_meters: loc.distance,
+      ...(params.timezone && isValidTimezone(params.timezone)
+        ? { timezone: params.timezone }
+        : {}),
     })
     .eq('id', params.attendanceId)
     .select()

@@ -14,6 +14,7 @@ import WeeklySummaryEmail from '@/emails/WeeklySummaryEmail';
 import { automationLogger } from '@/lib/automation/logger';
 import { parseAutomationRequest } from '@/lib/automation/workflow-request';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { completionPercent } from '@/lib/attendance/summary';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
           .reduce((sum, a) => sum + (a.total_hours ?? 0), 0);
         const taskCount = (pendingTasks ?? [])
           .filter((t) => t.user_id === ojt.id).length;
-        const completionPct = Math.min(100, (totalHoursAll / ojt.required_hours) * 100);
+        const completionPct = completionPercent(totalHoursAll, ojt.required_hours);
 
         return {
           fullName: ojt.full_name,

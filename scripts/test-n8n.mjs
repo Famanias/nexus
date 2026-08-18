@@ -221,11 +221,11 @@ const testSuites = [
   // 4. REPORTS DOMAIN
   {
     domain: 'reports',
-    event: 'report.submitted',
-    description: 'Report Submitted -> Slack & Discord Review Alerts',
+    event: 'report.generated',
+    description: 'Report Generated -> Slack & Discord Review Alerts',
     payload: {
-      id: `evt_test_report_sub_${Date.now()}`,
-      event: 'report.submitted',
+      id: `evt_test_report_gen_${Date.now()}`,
+      event: 'report.generated',
       actorId: 'usr_intern_alex_001',
       organizationId: 'org_test_acme_001',
       payload: {

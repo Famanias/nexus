@@ -178,16 +178,21 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
 
     if (editingUser) {
       // Update profile
+      const updateData: Record<string, unknown> = {
+        full_name: formData.full_name,
+        role: formData.role,
+        system_role: formData.role,
+        department: formData.department || null,
+        is_active: formData.is_active,
+      };
+
+      if (formData.role === 'ojt') {
+        updateData.required_hours = formData.required_hours;
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          role: formData.role,
-          system_role: formData.role,
-          department: formData.department || null,
-          required_hours: formData.required_hours,
-          is_active: formData.is_active,
-        })
+        .update(updateData)
         .eq('id', editingUser.id);
 
       if (updateError) {
@@ -284,7 +289,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
       email: u.email,
       role: u.role,
       department: u.department ?? '—',
-      required_hours: `${u.required_hours}h`,
+      required_hours: u.role === 'ojt' ? `${u.required_hours}h` : '—',
       date: formatDate(u.created_at),
       status: u.is_active ? 'Active' : 'Inactive',
       statusColor: u.is_active ? 'success' : 'default',
@@ -555,14 +560,16 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth label="Required Hours" type="number"
-                value={formData.required_hours}
-                onChange={(e) => setFormData({ ...formData, required_hours: Number(e.target.value) })}
-                inputProps={{ min: 1 }}
-              />
-            </Grid>
+            {formData.role === 'ojt' && (
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth label="Required Hours" type="number"
+                  value={formData.required_hours}
+                  onChange={(e) => setFormData({ ...formData, required_hours: Number(e.target.value) })}
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+            )}
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControlLabel
                 control={

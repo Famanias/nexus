@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { Profile } from '@/types';
+import { completionPercent } from '@/lib/attendance/summary';
 import ReportsClient from './ReportsClient';
 import RequireOrganization from '@/components/shared/RequireOrganization';
 
@@ -24,7 +25,7 @@ export default async function ReportsPage() {
       profile: ojt,
       total_hours,
       total_days,
-      completion_pct: Math.min(100, (total_hours / ojt.required_hours) * 100),
+      completion_pct: completionPercent(total_hours, ojt.required_hours),
       this_month_hours: total_hours,
       this_month_days: total_days,
       avg_daily_hours: total_days > 0 ? total_hours / total_days : 0,
