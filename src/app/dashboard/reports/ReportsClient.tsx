@@ -10,6 +10,7 @@ import { Download as DownloadIcon } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/types';
 import { formatHours } from '@/lib/utils/format';
+import { completionPercent } from '@/lib/attendance/summary';
 import { format } from 'date-fns';
 import StatCard from '@/components/shared/StatCard';
 import { People as PeopleIcon, AccessTime as ClockIcon, TrendingUp as TrendIcon } from '@mui/icons-material';
@@ -70,7 +71,7 @@ export default function ReportsClient({ initialReports }: Props) {
         profile: ojt,
         total_hours,
         total_days,
-        completion_pct: Math.min(100, (total_hours / ojt.required_hours) * 100),
+        completion_pct: completionPercent(total_hours, ojt.required_hours),
         this_month_hours,
         this_month_days,
         avg_daily_hours: total_days > 0 ? total_hours / total_days : 0,

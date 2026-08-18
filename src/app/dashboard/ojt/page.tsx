@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { format } from 'date-fns';
 import { redirect } from 'next/navigation';
-import { Profile, AttendanceSummary } from '@/types';
+import { Profile } from '@/types';
 import { isOjt } from '@/lib/attendance/eligibility';
+import { computeAttendanceSummary } from '@/lib/attendance/summary';
 import OJTClient from './OJTClient';
 
 export const dynamic = 'force-dynamic';
@@ -29,16 +30,12 @@ export default async function OJTPage() {
     redirect(`/dashboard/${(profile as Profile).system_role ?? (profile as Profile).role}`);
   }
 
-  const required = (profile as Profile)?.required_hours ?? 600;
-  const totalHours = (allAttendance ?? []).reduce((acc, row) => acc + (row.total_hours ?? 0), 0);
-
-  const summary: AttendanceSummary = {
-    total_days: (allAttendance ?? []).length,
-    total_hours: totalHours,
-    required_hours: required,
-    remaining_hours: Math.max(0, required - totalHours),
-    completion_percentage: Math.min(100, (totalHours / required) * 100),
-  };
+  const summary = computeAttendanceSummary({
+    rows: allAttendance ?? [],
+    requiredHours: (profile as Profile).required_hours,
+    role: (profile as Profile).role,
+    systemRole: (profile as Profile).system_role,
+  })!;
 
   return (
     <OJTClient

@@ -182,4 +182,47 @@ Deepening the attendance/clock cluster per the architecture review: an attendanc
 
 ---
 
-*(Phase 3 — attendance summary, lands here as it is implemented.)*
+## Phase 3: Attendance summary module
+
+### Implementation summary
+- New `src/lib/attendance/summary.ts` — the attendance-summary module:
+  - `completionPercent(total, required)` — `min(100, total / required × 100)`; returns 0 when `required` is missing or zero. The single formula shared by dashboards and reports.
+  - `computeAttendanceSummary({ rows, requiredHours, role, systemRole })` — builds the `AttendanceSummary` (total days, total hours, required hours, remaining hours, completion percentage) for an OJT; returns `null` for non-OJT effective roles (`system_role ?? role`, via the `isOjt` predicate). Honors `profiles.required_hours` — no hardcoded 600 defaults.
+- `src/lib/hooks/useAttendance.ts` — `fetchSummary` adds `role, system_role` to the profile select and delegates to `computeAttendanceSummary` (nullable result flows into the existing `summary` state).
+- `src/app/dashboard/ojt/page.tsx` — delegates to `computeAttendanceSummary`; the page is already OJT-guarded, so the non-null result is asserted (`!`).
+- `src/app/dashboard/supervisor/page.tsx`, `src/app/dashboard/reports/page.tsx`, `src/app/dashboard/reports/ReportsClient.tsx`, `src/app/api/automation/workflows/weekly-summary/route.ts` — the four `Math.min(100, (total/required)*100)` sites swapped for `completionPercent`.
+
+### Files changed
+- `src/lib/attendance/summary.ts` (new)
+- `src/lib/hooks/useAttendance.ts`
+- `src/app/dashboard/ojt/page.tsx`
+- `src/app/dashboard/supervisor/page.tsx`
+- `src/app/dashboard/reports/page.tsx`
+- `src/app/dashboard/reports/ReportsClient.tsx`
+- `src/app/api/automation/workflows/weekly-summary/route.ts`
+- `src/__tests__/unit/attendance-summary.test.ts` (new)
+
+### Automated verification
+- `npx vitest run src/__tests__/unit/attendance-summary.test.ts` — 7/7 passed.
+- `npm test` — 13 files, 81/81 passed.
+- `npx tsc --noEmit` — 0 errors.
+- `npm run lint` — 0 errors (3 pre-existing warnings in untouched files).
+
+### Manual QA
+1. As an OJT with a non-default `required_hours` (e.g. 400), open `/dashboard/ojt`: the summary card shows 400 required hours and progress computed against it (not 600).
+2. Clock in/out a few times; verify the summary's total days, total hours, remaining hours, and completion percentage all agree with the `attendance` table.
+3. As a supervisor, open `/dashboard/supervisor`: each OJT's completion percentage matches `min(100, total/required×100)` from the reports page.
+4. Open `/dashboard/reports` as a supervisor/admin: completion percentages match the supervisor dashboard for the same OJTs.
+5. Trigger the weekly-summary workflow (or replay a log entry from `/dashboard/admin/automation`): verify emailed completion percentages match the reports page.
+
+### Expected results / pass criteria
+- One summary formula everywhere — dashboards, reports, and the weekly-summary email agree on completion percentages.
+- `required_hours` comes from the profile, never a hardcoded 600 default.
+- Supervisors/admins see no OJT-style summary (the module returns null for non-OJT roles).
+- No regression in the full test suite, typecheck, or lint.
+
+**NOT validated until the manual QA above is performed.**
+
+---
+
+*(The three-phase attendance-clock deepening is complete once the manual QA above passes.)*
