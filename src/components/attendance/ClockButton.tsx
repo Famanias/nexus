@@ -115,9 +115,14 @@ export default function ClockButton({ userId, todayRecord, todayRecords, onSucce
         onSuccess();
       }
     } else {
+      if (!activeRecord) {
+        setLoading(false);
+        return;
+      }
+
       // CLOCK OUT
       const result = await clockOut({
-        attendanceId: activeRecord?.id,
+        attendanceId: activeRecord.id,
         latitude: lat,
         longitude: lng,
         timezone,
@@ -132,9 +137,9 @@ export default function ClockButton({ userId, todayRecord, todayRecords, onSucce
         );
         // Emit attendance.clocked_out event
         emitClientEvent('attendance.clocked_out', {
-          attendanceId: activeRecord?.id,
+          attendanceId: activeRecord.id,
           userId,
-          clockIn: activeRecord?.clock_in!,
+          clockIn: activeRecord.clock_in,
           clockOut: result.data?.clock_out,
           totalHours: sessionHours,
           date: today,
