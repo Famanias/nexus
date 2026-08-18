@@ -1,77 +1,68 @@
-# Walkthrough — Ticket #18: Org-Scoped Cache Wrapper & Tag Revalidation
+# Walkthrough — Ticket #19: Attendance Summary RPC & Aggregation Module
 
 ## Summary of Work
 
-Implemented an organization-scoped server caching layer using Next.js \`unstable_cache\` and tag-based on-demand invalidation (\`revalidateTag\`) for low-churn, read-heavy data (\`site_settings\` and active OJT rosters). Integrated cache readers into pages and wired tag purging into mutation server actions and API routes.
+Replaced client-side and application-server-side row iteration and historical attendance downloading with database-level aggregation RPCs (\`get_attendance_summary\` and \`get_attendance_summaries\`). The unified attendance summary module (\`src/lib/attendance/summary.ts\`) encapsulates direct database aggregation with graceful fallbacks.
 
 ## Key Changes
 
-### 1. Cache Subsystem
-- **[tags.ts](file:///d:/repos/ojt-tracker/src/lib/cache/tags.ts)**:
-  - Defined canonical tags: \`settings:{orgId}\` and \`ojts:{orgId}\`.
-  - \`revalidateSettingsTag(orgId)\`: Purges settings cache on demand.
-  - \`revalidateOjtsTag(orgId)\`: Purges active OJT roster cache on demand.
-- **[cached-queries.ts](file:///d:/repos/ojt-tracker/src/lib/cache/cached-queries.ts)**:
-  - \`getCachedSiteSettings(orgId)\`: Cached fetcher for organization site settings.
-  - \`getCachedActiveOjts(orgId)\`: Cached fetcher for active OJT profiles.
-  - Utilizes stateless Supabase client to avoid dynamic cookie reads within \`unstable_cache\`.
-- **[index.ts](file:///d:/repos/ojt-tracker/src/lib/cache/index.ts)**: Central barrel export for cache functions.
+### 1. Database Aggregation RPCs (Postgres Migration)
+- **[20260818010000_attendance_summary_rpc.sql](file:///d:/repos/ojt-tracker/supabase/migrations/20260818010000_attendance_summary_rpc.sql)**:
+  - \`get_attendance_summary(target_user_id)\`: Computes \`SUM(total_hours)\` and \`COUNT(DISTINCT date)\` directly in Postgres as a \`SECURITY DEFINER\` function.
+  - \`get_attendance_summaries(target_org_id)\`: Computes aggregated hours and distinct days grouped by user for active OJTs.
 
-### 2. Readers Integrated
-- **[admin/settings/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/admin/settings/page.tsx)**: Now calls \`getCachedSiteSettings(profile.org_id)\`.
-- **[kanban/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/kanban/page.tsx)**: Replaced raw profile query with \`getCachedActiveOjts(profile.org_id)\`.
-- **[reports/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/reports/page.tsx)**: Replaced raw profile query with \`getCachedActiveOjts(profile.org_id)\`.
-- **[supervisor/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/supervisor/page.tsx)**: Replaced raw profile query with \`getCachedActiveOjts(profile.org_id)\`.
+### 2. Unified Attendance Summary Module
+- **[summary.ts](file:///d:/repos/ojt-tracker/src/lib/attendance/summary.ts)**:
+  - \`getAttendanceSummary(supabase, userId, profile)\`: Queries the individual summary RPC, validates OJT eligibility, and applies canonical \`completionPercent\`.
+  - \`getAttendanceSummaries(supabase, orgId)\`: Queries the roster aggregation RPC and returns a map of \`user_id -> { total_hours, total_days }\`.
+  - Preserved synchronous \`computeAttendanceSummary\` and \`completionPercent\` for complete backward compatibility.
 
-### 3. Mutation Triggers Wired
-- **[actions/settings.ts](file:///d:/repos/ojt-tracker/src/actions/settings.ts)**: \`saveSiteSettings\` and \`regenerateInviteCode\` call \`revalidateSettingsTag(orgId)\`.
-- **[actions/integrations.ts](file:///d:/repos/ojt-tracker/src/actions/integrations.ts)**: \`saveOrgIntegration\` calls \`revalidateSettingsTag(orgId)\`.
-- **[actions/users.ts](file:///d:/repos/ojt-tracker/src/actions/users.ts)**: \`syncUserRoleMetadata\` calls \`revalidateOjtsTag(orgId)\`.
-- **[api/users/route.ts](file:///d:/repos/ojt-tracker/src/app/api/users/route.ts)**: User creation and deletion call \`revalidateOjtsTag(orgId)\`.
-- **[api/onboarding/route.ts](file:///d:/repos/ojt-tracker/src/app/api/onboarding/route.ts)**: Organization creation calls \`revalidateSettingsTag\` & \`revalidateOjtsTag\`; org joining calls \`revalidateOjtsTag\`.
-- **[api/invitations/accept/route.ts](file:///d:/repos/ojt-tracker/src/app/api/invitations/accept/route.ts)**: Calls \`revalidateOjtsTag\`.
+### 3. Consumers Refactored
+- **[ojt/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/ojt/page.tsx)**: Replaced full-table history download with \`getAttendanceSummary(supabase, user.id, profile)\`.
+- **[supervisor/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/supervisor/page.tsx)**: Replaced full-table history download with \`getAttendanceSummaries(supabase, profile.org_id)\`.
+- **[reports/page.tsx](file:///d:/repos/ojt-tracker/src/app/dashboard/reports/page.tsx)**: Replaced full-table history download with \`getAttendanceSummaries(supabase, profile.org_id)\`.
 
 ### 4. Architecture Documentation
-- **[docs/ARCHITECTURE.md](file:///d:/repos/ojt-tracker/docs/ARCHITECTURE.md)**: Documented **ADR-007: Org-Scoped Cache Wrapper with Tag Revalidation**.
+- **[docs/ARCHITECTURE.md](file:///d:/repos/ojt-tracker/docs/ARCHITECTURE.md)**: Documented **ADR-008: Database-Level Attendance Aggregation via RPCs**.
 
 ---
 
 ## Verification Results
 
 ### Unit Tests
-- Created **[cache.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/cache.test.ts)** (8 tests) testing tag generation, revalidation calls, cache fetchers, and fallbacks.
-- Full test suite passed: **16 test files passed, 106 tests passed**.
+- Updated **[attendance-summary.test.ts](file:///d:/repos/ojt-tracker/src/__tests__/unit/attendance-summary.test.ts)** (13 tests) testing RPC invocation, role checks, fallback logic, and distinct day counts.
+- Full test suite passed: **16 test files passed, 111 tests passed**.
 
 ```
  ✓ src/__tests__/unit/automation.test.ts (11 tests)
  ✓ src/__tests__/unit/toast.test.tsx (4 tests)
  ✓ src/__tests__/unit/confirm-dialog.test.tsx (3 tests)
  ✓ src/__tests__/unit/clock-button.test.tsx (4 tests)
- ✓ src/__tests__/unit/attendance-day.test.ts (6 tests)
  ✓ src/__tests__/unit/components.test.tsx (3 tests)
+ ✓ src/__tests__/unit/attendance-day.test.ts (6 tests)
  ✓ src/__tests__/unit/security.test.ts (12 tests)
- ✓ src/__tests__/unit/encryption.test.ts (4 tests)
- ✓ src/__tests__/unit/session.test.ts (12 tests)
+ ✓ src/__tests__/unit/attendance-summary.test.ts (13 tests)
  ✓ src/__tests__/unit/cache.test.ts (8 tests)
+ ✓ src/__tests__/unit/session.test.ts (12 tests)
  ✓ src/__tests__/unit/helpers.test.ts (11 tests)
+ ✓ src/__tests__/unit/encryption.test.ts (4 tests)
  ✓ src/__tests__/unit/validation.test.ts (12 tests)
  ✓ src/__tests__/unit/redis.test.ts (2 tests)
- ✓ src/__tests__/unit/attendance-summary.test.ts (8 tests)
  ✓ src/__tests__/unit/rate-limit.test.ts (2 tests)
  ✓ src/__tests__/unit/eligibility.test.ts (4 tests)
 
  Test Files  16 passed (16)
-      Tests  106 passed (106)
+      Tests  111 passed (111)
 ```
 
 ### Production Build
-- \`next build\` compiled with Turbopack and completed all 49 routes successfully with 0 errors.
+- \`next build\` completed with 0 errors across all 49 routes.
 
 ---
 
 ## Issue Status Update
 
-- **[#18](https://github.com/Famanias/nexus/issues/18)** closed as resolved.
+- **[#19](https://github.com/Famanias/nexus/issues/19)** closed as resolved.
 - **Unblocked on frontier**:
-  - **[#19](https://github.com/Famanias/nexus/issues/19)**: Attendance summary: Database-level aggregation RPC and unified summary module
   - **[#20](https://github.com/Famanias/nexus/issues/20)**: Clock actions: Parallelize validation checks and leverage session seam
+  - **[#21](https://github.com/Famanias/nexus/issues/21)**: Client data modules: Trust server-rendered initial state and eliminate redundant mount fetches
