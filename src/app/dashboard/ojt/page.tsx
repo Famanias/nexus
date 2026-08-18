@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { format } from 'date-fns';
+import { redirect } from 'next/navigation';
 import { Profile, AttendanceSummary } from '@/types';
+import { isOjt } from '@/lib/attendance/eligibility';
 import OJTClient from './OJTClient';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +23,11 @@ export default async function OJTPage() {
       supabase.from('attendance').select('*').eq('user_id', userId).eq('date', today).maybeSingle(),
       supabase.from('attendance').select('total_hours').eq('user_id', userId).not('total_hours', 'is', null),
     ]);
+
+  if (!profile) redirect('/login');
+  if (!isOjt((profile as Profile).role, (profile as Profile).system_role)) {
+    redirect(`/dashboard/${(profile as Profile).system_role ?? (profile as Profile).role}`);
+  }
 
   const required = (profile as Profile)?.required_hours ?? 600;
   const totalHours = (allAttendance ?? []).reduce((acc, row) => acc + (row.total_hours ?? 0), 0);

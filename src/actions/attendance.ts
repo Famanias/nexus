@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isWithinRadius } from '@/lib/utils/distance';
 import { resolveDay, isValidTimezone } from '@/lib/attendance/day';
+import { isOjt } from '@/lib/attendance/eligibility';
 import type { Attendance } from '@/types';
 
 interface ClockActionParams {
@@ -43,9 +44,13 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id')
+    .select('org_id, role, system_role')
     .eq('id', user.id)
     .single();
+
+  if (!isOjt(profile?.role, profile?.system_role)) {
+    return { error: 'Only OJTs can clock in/out.' };
+  }
 
   const now = new Date();
   let date: string;
@@ -116,9 +121,13 @@ export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id')
+    .select('org_id, role, system_role')
     .eq('id', user.id)
     .single();
+
+  if (!isOjt(profile?.role, profile?.system_role)) {
+    return { error: 'Only OJTs can clock in/out.' };
+  }
 
   const loc = await resolveLocation(admin, profile?.org_id, params);
   if (loc.error) return { error: loc.error };

@@ -53,6 +53,9 @@ create table if not exists profiles (
 -- Add org_id column to profiles if upgrading from single-org schema
 alter table profiles add column if not exists org_id uuid references organizations(id) on delete set null;
 
+-- Effective role column (system_role ?? role governs routing and eligibility)
+alter table profiles add column if not exists system_role user_role default 'ojt';
+
 -- Add FK from organizations back to profiles (deferred to avoid circular dependency)
 do $$ begin
   alter table organizations
@@ -275,11 +278,23 @@ create policy "Supervisors and admins can view org attendance" on attendance
     and exists (select 1 from profiles where id = auth.uid() and role in ('supervisor', 'admin'))
   );
 drop policy if exists "Users can insert own attendance" on attendance;
-create policy "Users can insert own attendance" on attendance
-  for insert with check (auth.uid() = user_id);
+create policy "OJTs can insert own attendance" on attendance
+  for insert with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from profiles
+      where id = auth.uid() and coalesce(system_role, role) = 'ojt'
+    )
+  );
 drop policy if exists "Users can update own attendance" on attendance;
-create policy "Users can update own attendance" on attendance
-  for update using (auth.uid() = user_id);
+create policy "OJTs can update own attendance" on attendance
+  for update using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from profiles
+      where id = auth.uid() and coalesce(system_role, role) = 'ojt'
+    )
+  );
 drop policy if exists "Admins can update any attendance" on attendance;
 drop policy if exists "Admins can update any org attendance" on attendance;
 create policy "Admins can update any org attendance" on attendance

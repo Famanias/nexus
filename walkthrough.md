@@ -141,4 +141,45 @@ Deepening the attendance/clock cluster per the architecture review: an attendanc
 
 ---
 
-*(Phase 2 — clock eligibility, and Phase 3 — attendance summary, land here as they are implemented.)*
+## Phase 2: Clock eligibility (OJT-only)
+
+### Implementation summary
+- New `src/lib/attendance/eligibility.ts` — the clock-eligibility module:
+  - `isOjt(role, systemRole)` — whether a user may clock in/out under the **effective role** (`system_role ?? role`). An OJT promoted to supervisor/admin loses eligibility; supervisors/admins never clock.
+- `src/actions/attendance.ts`:
+  - `clockIn`/`clockOut` now select `role, system_role` on the caller's profile and reject non-OJTs with `Only OJTs can clock in/out.` (the actions write via the service-role admin client, so RLS does not protect them — the check lives in the action).
+- `supabase/schema.sql`:
+  - `profiles` gains the idempotent `system_role user_role` column (matches the role-enum migration) so fresh installs are self-consistent.
+  - Attendance insert/update policies narrowed from `auth.uid() = user_id` to also require `coalesce(system_role, role) = 'ojt'` against `profiles` — closing direct anon writes for supervisors/admins. Admin org-level update policy is unchanged.
+- `src/app/dashboard/ojt/page.tsx` — route guard: missing profile redirects to `/login`; non-OJT effective role redirects to that role's dashboard.
+
+### Files changed
+- `src/lib/attendance/eligibility.ts` (new)
+- `src/actions/attendance.ts`
+- `supabase/schema.sql`
+- `src/app/dashboard/ojt/page.tsx`
+- `src/__tests__/unit/eligibility.test.ts` (new)
+
+### Automated verification
+- `npx vitest run src/__tests__/unit/eligibility.test.ts` — 4/4 passed (effective-role matrix).
+- `npm test` — 12 files, 74/74 passed.
+- `npx tsc --noEmit` — 0 errors.
+- `npm run lint` — 0 errors (3 pre-existing warnings in untouched files).
+
+### Manual QA
+1. Apply the schema change to your Supabase instance (run the updated attendance insert/update policy block and the profiles `system_role` line from `supabase/schema.sql`).
+2. As an OJT, open `/dashboard/ojt` and clock in/out — normal behavior, no `Only OJTs...` error.
+3. As a supervisor (or an OJT promoted to supervisor/admin), attempt to call `clockIn`/`clockOut` directly (e.g. via a script or the browser console against the server action): verify the action returns `Only OJTs can clock in/out.` and no row is written.
+4. Try inserting/updating an `attendance` row directly through the REST API with a supervisor/admin JWT: verify the RLS policy rejects it (permission denied).
+5. As a supervisor, open `/dashboard/ojt` directly in the browser: verify you are redirected to `/dashboard/supervisor`.
+
+### Expected results / pass criteria
+- Only OJTs (by effective role) can clock in/out — enforced in the action, at the database, and by routing.
+- Supervisors and admins never clock; a promoted OJT cannot clock under their old role.
+- No regression in the full test suite, typecheck, or lint.
+
+**NOT validated until the manual QA above is performed.**
+
+---
+
+*(Phase 3 — attendance summary, lands here as it is implemented.)*
