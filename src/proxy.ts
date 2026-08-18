@@ -2,7 +2,10 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { applySecurityHeaders } from './lib/security/headers';
 
+import { getEffectiveRole } from './lib/session';
+
 export async function proxy(request: NextRequest) {
+
   // Skip auth/session work for Next.js link-prefetch requests
   if (request.headers.get('Next-Router-Prefetch')) {
     return NextResponse.next();
@@ -66,7 +69,8 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  let role: string = (user?.user_metadata?.role as string) ?? 'ojt';
+  const fallbackRole = (user?.user_metadata?.role as string) ?? 'ojt';
+  let role: string = fallbackRole;
 
   if (user) {
     const { data: profile } = await supabase
@@ -74,8 +78,9 @@ export async function proxy(request: NextRequest) {
       .select('role, system_role')
       .eq('id', user.id)
       .single();
-    role = (profile?.system_role ?? profile?.role) ?? role;
+    role = getEffectiveRole(profile, fallbackRole);
   }
+
 
   // Helper: build a redirect response while preserving any refreshed auth cookies
   const redirectWithCookies = (url: URL) => {

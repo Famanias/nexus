@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { validateWebhookUrl, maskWebhookUrl, IntegrationProvider } from '@/lib/integrations/validation';
 import { invalidateOrgIntegrationsCache } from '@/lib/integrations/cache';
 import { encryptSecret, decryptSecret } from '@/lib/services/encryption';
+import { getSession, getEffectiveRole } from '@/lib/session';
 
 export interface OrgIntegrationData {
   id?: string;
@@ -25,27 +26,22 @@ export interface OrgIntegrationData {
  */
 export async function getOrgIntegrations(): Promise<{ data?: OrgIntegrationData[]; error?: string }> {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { user, profile } = await getSession();
 
-    if (userError || !user) {
+    if (!user) {
       return { error: 'Unauthorized: Not authenticated.' };
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('org_id, role')
-      .eq('id', user.id)
-      .single();
-
+    const effectiveRole = getEffectiveRole(profile);
     if (!profile?.org_id) {
       return { error: 'User does not belong to an organization.' };
     }
 
-    if (profile.role !== 'admin') {
+    if (effectiveRole !== 'admin') {
       return { error: 'Forbidden: Admin access required.' };
     }
 
+    const supabase = await createClient();
     const { data: integrations, error: fetchError } = await supabase
       .from('organization_integrations')
       .select('*')
@@ -89,23 +85,19 @@ export async function saveOrgIntegration(params: {
   try {
     const { provider, enabled, webhookUrl, config } = params;
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, profile } = await getSession();
     if (!user) {
       return { error: 'Unauthorized' };
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('org_id, role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.org_id || profile.role !== 'admin') {
+    const effectiveRole = getEffectiveRole(profile);
+    if (!profile?.org_id || effectiveRole !== 'admin') {
       return { error: 'Forbidden: Admin access required.' };
     }
 
+    const supabase = await createClient();
     const orgId = profile.org_id;
+
 
     // Validate webhook URL if provided or toggled on
     let updateSecrets: Record<string, unknown> | undefined = undefined;

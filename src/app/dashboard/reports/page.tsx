@@ -3,19 +3,18 @@ import { Profile } from '@/types';
 import { completionPercent } from '@/lib/attendance/summary';
 import ReportsClient from './ReportsClient';
 import RequireOrganization from '@/components/shared/RequireOrganization';
+import { requireProfile } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
+  const { profile } = await requireProfile();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: ojts }, { data: allAtt }, { data: profile }] =
-    await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
-      supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
-      supabase.from('profiles').select('*').eq('id', user!.id).single(),
-    ]);
+  const [{ data: ojts }, { data: allAtt }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
+    supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
+  ]);
 
   const reports = (ojts ?? []).map((ojt: Profile) => {
     const all = (allAtt ?? []).filter((a) => a.user_id === ojt.id);
@@ -33,8 +32,9 @@ export default async function ReportsPage() {
   }).sort((a, b) => b.total_hours - a.total_hours);
 
   return (
-    <RequireOrganization featureName="Reports" serverProfile={profile as Profile}>
+    <RequireOrganization featureName="Reports" serverProfile={profile}>
       <ReportsClient initialReports={reports} />
     </RequireOrganization>
   );
 }
+

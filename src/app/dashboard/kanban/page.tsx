@@ -1,14 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { KanbanColumn, Profile, TaskAssigneeDetail } from '@/types';
 import KanbanBoardClient from '@/components/kanban/KanbanBoardClient';
+import { requireProfile } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function KanbanPage() {
+  const { user, profile } = await requireProfile();
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const [{ data: cols }, { data: tasks }, { data: ojts }, { data: profile }] =
+  const [{ data: cols }, { data: tasks }, { data: ojts }] =
     await Promise.all([
       supabase.from('kanban_columns').select('*').order('position'),
       supabase.from('kanban_tasks').select(`
@@ -22,13 +23,12 @@ export default async function KanbanPage() {
         attachments:task_attachments(*)
       `).order('position'),
       supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
-      supabase.from('profiles').select('*').eq('id', user!.id).single(),
     ]);
 
   let columnsData = cols ?? [];
 
-  if (columnsData.length === 0 && user) {
-    const orgId = (profile as Profile)?.org_id;
+  if (columnsData.length === 0) {
+    const orgId = profile.org_id;
     const defaultCols = [
       { title: 'To Do', color: '#6366f1', position: 0, created_by: user.id, org_id: orgId || null },
       { title: 'In Progress', color: '#f59e0b', position: 1, created_by: user.id, org_id: orgId || null },
@@ -69,7 +69,8 @@ export default async function KanbanPage() {
     <KanbanBoardClient
       initialColumns={enrichedCols}
       initialOjts={(ojts ?? []) as Profile[]}
-      initialProfile={profile as Profile}
+      initialProfile={profile}
     />
   );
 }
+

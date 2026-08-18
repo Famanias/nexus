@@ -1,27 +1,20 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { getSession, getEffectiveRole } from '@/lib/session';
 
 export async function syncUserRoleMetadata(
   userId: string,
   role: string
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile: callerProfile } = await getSession();
   if (!user) return { error: 'Unauthorized' };
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('org_id, role, system_role')
-    .eq('id', user.id)
-    .single();
-
-  const callerRole = callerProfile?.system_role ?? callerProfile?.role;
+  const callerRole = getEffectiveRole(callerProfile);
   if (!callerProfile || callerRole !== 'admin' || !callerProfile.org_id) {
     return { error: 'Only organization admins can change user roles.' };
   }
+
 
   const adminSupabase = await createAdminClient();
   const { data: targetProfile } = await adminSupabase

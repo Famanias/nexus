@@ -1,19 +1,13 @@
-import { createClient } from '@/lib/supabase/server';
+import { getSession, getEffectiveRole } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardIndex() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getSession();
 
   if (!user) redirect('/login');
 
-  const role = (user.user_metadata?.role as string) ?? 'ojt';
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, system_role')
-    .eq('id', user.id)
-    .single();
-
-  const effectiveRole = (profile?.system_role ?? profile?.role) ?? role;
+  const fallbackRole = (user.user_metadata?.role as string) ?? 'ojt';
+  const effectiveRole = getEffectiveRole(profile, fallbackRole);
   redirect(`/dashboard/${effectiveRole}`);
 }
+

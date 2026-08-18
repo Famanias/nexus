@@ -1,9 +1,9 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { isWithinRadius } from '@/lib/utils/distance';
 import { resolveDay, isValidTimezone } from '@/lib/attendance/day';
-import { isOjt } from '@/lib/attendance/eligibility';
+import { getSession, getEffectiveRole } from '@/lib/session';
 import type { Attendance } from '@/types';
 
 interface ClockActionParams {
@@ -33,24 +33,15 @@ interface ClockOutParams extends ClockActionParams {
  * is resolved from the server clock plus the client's timezone.
  */
 export async function clockIn(params: ClockActionParams = {}): Promise<ClockInResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
+  const { user, profile } = await getSession();
+  if (!user) return { error: 'Unauthorized' };
 
-  const admin = await createAdminClient();
-
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('org_id, role, system_role')
-    .eq('id', user.id)
-    .single();
-
-  if (!isOjt(profile?.role, profile?.system_role)) {
+  const effectiveRole = getEffectiveRole(profile);
+  if (effectiveRole !== 'ojt') {
     return { error: 'Only OJTs can clock in/out.' };
   }
+
+  const admin = await createAdminClient();
 
   const now = new Date();
   let date: string;
@@ -100,12 +91,13 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
  * the total hours via the DB trigger.
  */
 export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
+  const { user, profile } = await getSession();
+  if (!user) return { error: 'Unauthorized' };
+
+  const effectiveRole = getEffectiveRole(profile);
+  if (effectiveRole !== 'ojt') {
+    return { error: 'Only OJTs can clock in/out.' };
+  }
 
   const admin = await createAdminClient();
 
@@ -135,15 +127,6 @@ export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResu
   if (record.user_id !== user.id) return { error: 'Forbidden' };
   if (record.clock_out) return { error: 'You have already clocked out.' };
 
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('org_id, role, system_role')
-    .eq('id', user.id)
-    .single();
-
-  if (!isOjt(profile?.role, profile?.system_role)) {
-    return { error: 'Only OJTs can clock in/out.' };
-  }
 
   const loc = await resolveLocation(admin, profile?.org_id, params);
   if (loc.error) return { error: loc.error };
