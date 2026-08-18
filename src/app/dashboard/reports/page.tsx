@@ -4,6 +4,7 @@ import { completionPercent } from '@/lib/attendance/summary';
 import ReportsClient from './ReportsClient';
 import RequireOrganization from '@/components/shared/RequireOrganization';
 import { requireProfile } from '@/lib/session';
+import { getCachedActiveOjts } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,11 @@ export default async function ReportsPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: ojts }, { data: allAtt }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
+  const [ojts, { data: allAtt }] = await Promise.all([
+    getCachedActiveOjts(profile.org_id),
     supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
   ]);
+
 
   const reports = (ojts ?? []).map((ojt: Profile) => {
     const all = (allAtt ?? []).filter((a) => a.user_id === ojt.id);

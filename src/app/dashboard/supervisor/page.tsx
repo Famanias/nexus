@@ -3,19 +3,23 @@ import { Profile } from '@/types';
 import { format } from 'date-fns';
 import { completionPercent } from '@/lib/attendance/summary';
 import SupervisorClient from './SupervisorClient';
+import { requireProfile } from '@/lib/session';
+import { getCachedActiveOjts } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SupervisorPage() {
+  const { profile } = await requireProfile();
   const supabase = await createClient();
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const [{ data: ojts }, { data: todayAttendance }, { data: allAttendance }] =
+  const [ojts, { data: todayAttendance }, { data: allAttendance }] =
     await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
+      getCachedActiveOjts(profile.org_id),
       supabase.from('attendance').select('*').eq('date', today),
       supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
     ]);
+
 
   const summaries = (ojts ?? []).map((ojt: Profile) => {
     const ojtAttendance = (allAttendance ?? []).filter((a) => a.user_id === ojt.id);

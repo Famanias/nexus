@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { getSession, getEffectiveRole } from '@/lib/session';
+import { revalidateOjtsTag } from '@/lib/cache';
 
 export async function syncUserRoleMetadata(
   userId: string,
@@ -14,7 +15,6 @@ export async function syncUserRoleMetadata(
   if (!callerProfile || callerRole !== 'admin' || !callerProfile.org_id) {
     return { error: 'Only organization admins can change user roles.' };
   }
-
 
   const adminSupabase = await createAdminClient();
   const { data: targetProfile } = await adminSupabase
@@ -41,5 +41,7 @@ export async function syncUserRoleMetadata(
 
   if (profileError) return { error: profileError.message };
   if (metadataError) return { error: metadataError instanceof Error ? metadataError.message : metadataError };
+
+  revalidateOjtsTag(callerProfile.org_id);
   return {};
-}
+}

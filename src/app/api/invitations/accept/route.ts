@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/session';
 import { acceptInvitation } from '@/lib/services/invitation';
+import { revalidateOjtsTag } from '@/lib/cache';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,10 +13,9 @@ function getAdminClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user } = await getSession();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized: login required.' }, { status: 401 });
     }
 
@@ -29,9 +29,14 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = getAdminClient();
     const invitation = await acceptInvitation(supabaseAdmin, token, user.id);
 
+    if (invitation.organization_id) {
+      revalidateOjtsTag(invitation.organization_id);
+    }
+
     return NextResponse.json({ success: true, role: invitation.role });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
+

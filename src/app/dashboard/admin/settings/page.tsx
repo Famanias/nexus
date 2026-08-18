@@ -3,6 +3,7 @@ import SettingsClient from './SettingsClient';
 import { Organization } from '@/types';
 import RequireOrganization from '@/components/shared/RequireOrganization';
 import { requireProfile } from '@/lib/session';
+import { getCachedSiteSettings } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +25,7 @@ export default async function SiteSettingsPage() {
     }
   }
 
-  const { data: settings } = await supabase
-    .from('site_settings')
-    .select('*')
-    .limit(1)
-    .maybeSingle();
+  const settings = await getCachedSiteSettings(profile.org_id);
 
   if (!settings && hasOrg) {
     return <div>No site settings found. Please contact an administrator.</div>;
@@ -40,4 +37,5 @@ export default async function SiteSettingsPage() {
     </RequireOrganization>
   );
 }
+
 

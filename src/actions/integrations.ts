@@ -9,6 +9,8 @@ import { validateWebhookUrl, maskWebhookUrl, IntegrationProvider } from '@/lib/i
 import { invalidateOrgIntegrationsCache } from '@/lib/integrations/cache';
 import { encryptSecret, decryptSecret } from '@/lib/services/encryption';
 import { getSession, getEffectiveRole } from '@/lib/session';
+import { revalidateSettingsTag } from '@/lib/cache';
+
 
 export interface OrgIntegrationData {
   id?: string;
@@ -150,10 +152,12 @@ export async function saveOrgIntegration(params: {
       if (insertErr) return { error: insertErr.message };
     }
 
-    // Invalidate in-memory resolution cache for this org
+    // Invalidate in-memory resolution cache and Next.js data cache for this org
     invalidateOrgIntegrationsCache(orgId);
+    revalidateSettingsTag(orgId);
 
     return { success: true };
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { error: msg };

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { KanbanColumn, Profile, TaskAssigneeDetail } from '@/types';
 import KanbanBoardClient from '@/components/kanban/KanbanBoardClient';
 import { requireProfile } from '@/lib/session';
+import { getCachedActiveOjts } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export default async function KanbanPage() {
   const { user, profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: cols }, { data: tasks }, { data: ojts }] =
+  const [{ data: cols }, { data: tasks }, ojts] =
     await Promise.all([
       supabase.from('kanban_columns').select('*').order('position'),
       supabase.from('kanban_tasks').select(`
@@ -22,8 +23,9 @@ export default async function KanbanPage() {
         ),
         attachments:task_attachments(*)
       `).order('position'),
-      supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
+      getCachedActiveOjts(profile.org_id),
     ]);
+
 
   let columnsData = cols ?? [];
 

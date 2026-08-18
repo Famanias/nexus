@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getSession, getEffectiveRole } from '@/lib/session';
+import { revalidateSettingsTag } from '@/lib/cache';
 
 export interface SiteSettingsInput {
   id: string;
@@ -14,7 +15,7 @@ export interface SiteSettingsInput {
 }
 
 export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ error?: string }> {
-  const { user } = await getSession();
+  const { user, profile } = await getSession();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -31,6 +32,7 @@ export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ erro
     .eq('id', input.id);
 
   if (error) return { error: error.message };
+  revalidateSettingsTag(profile?.org_id);
   return {};
 }
 
@@ -56,6 +58,8 @@ export async function regenerateInviteCode(): Promise<{ code?: string; error?: s
     .eq('id', profile.org_id);
 
   if (error) return { error: error.message };
+  revalidateSettingsTag(profile.org_id);
   return { code };
 }
+
 
