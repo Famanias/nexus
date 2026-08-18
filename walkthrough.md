@@ -83,3 +83,62 @@ All four architectural UI/UX improvements identified in the design audit have be
 
 4. **Next.js Production Build (`next build`)**:
    - Exit code 0 (compiled and built successfully).
+
+---
+
+# Attendance Clock Seam — Architecture Deepening (3 Phases)
+
+Deepening the attendance/clock cluster per the architecture review: an attendance-day module (server-authoritative timezone bucketing), clock eligibility (OJT-only), and a shared attendance summary module.
+
+## Phase 1: Attendance-day module (timezone-aware clock)
+
+### Implementation summary
+- New `src/lib/attendance/day.ts` — the attendance-day module:
+  - `isValidTimezone(tz)` — validates an IANA (or UTC/Etc) timezone via `Intl`.
+  - `resolveDay(now, timezone)` — resolves the attendance day (`yyyy-MM-dd`) for a server clock instant in the client's timezone. Throws `TypeError` on invalid timezone.
+  - `getClientTimezone()` — the browser's IANA timezone, with whole-hour `Etc/GMT` offset fallback.
+  - `formatTimeInZone(iso, timezone)` — renders an instant as the OJT's local clock time (e.g. "08:30 AM").
+- `src/actions/attendance.ts`:
+  - `ClockActionParams.date` removed, replaced with `timezone`.
+  - `clockIn` derives the bucket date from the **server clock** + client timezone (`resolveDay`), falling back to an error (not UTC) when the timezone is missing/invalid. Inserts the `timezone` on the row.
+  - `clockOut` records the validated `timezone` on the row (no re-bucketing).
+- `src/types/index.ts` — `Attendance` gains `timezone?: string`.
+- `supabase/schema.sql` — `attendance.timezone text` column (in `CREATE TABLE` + idempotent `ALTER`).
+- `src/components/attendance/ClockButton.tsx` — sends `getClientTimezone()` to the actions instead of a client-computed date.
+- `src/components/attendance/AttendanceTable.tsx` — renders clock times in the OJT's stored timezone (`formatTimeInZone`), falling back to viewer-local for pre-migration rows; CSV export matches.
+- `src/app/dashboard/supervisor/SupervisorClient.tsx` — "Today" column renders the OJT's local clock-in time.
+
+### Files changed
+- `src/lib/attendance/day.ts` (new)
+- `src/actions/attendance.ts`
+- `src/types/index.ts`
+- `supabase/schema.sql`
+- `src/components/attendance/ClockButton.tsx`
+- `src/components/attendance/AttendanceTable.tsx`
+- `src/app/dashboard/supervisor/SupervisorClient.tsx`
+- `src/__tests__/unit/attendance-day.test.ts` (new)
+
+### Automated verification
+- `npx vitest run src/__tests__/unit/attendance-day.test.ts` — 6/6 passed.
+- `npm test` — 11 files, 70/70 passed.
+- `npx tsc --noEmit` — 0 errors.
+- `npm run lint` — 0 errors (3 pre-existing warnings in untouched files).
+
+### Manual QA
+1. Apply the schema change to your Supabase instance (run the new `alter table attendance add column if not exists timezone text;`).
+2. As an OJT, open `/dashboard/ojt` and clock in. Verify the success message appears and the button flips to "Clock Out" immediately (this is the day-bucket consistency fix).
+3. Clock out. Verify the "You worked X today" message appears.
+4. In the `attendance` table, verify the new row has a `timezone` set to your browser's IANA name (e.g. `Asia/Manila`), `clock_in`/`clock_out` stored in UTC, and `date` matching your local day.
+5. With a second user in a different timezone (or by temporarily changing your OS timezone), have them clock in, then view `/dashboard/attendance` as a supervisor and confirm their clock-in shows in *their* local time (not your viewer's).
+6. Temporarily set your browser's timezone to something 12+ hours ahead and clock in — verify the `date` column matches that timezone's calendar day.
+
+### Expected results / pass criteria
+- Clock-in always lands in the OJT's local calendar day regardless of server timezone; no UTC-midnight mis-bucketing (the button flip matches the stored row).
+- The attendance row records the OJT's timezone; supervisors see OJT-local clock times.
+- No regression in the full test suite, typecheck, or lint.
+
+**NOT validated until the manual QA above is performed.**
+
+---
+
+*(Phase 2 — clock eligibility, and Phase 3 — attendance summary, land here as they are implemented.)*

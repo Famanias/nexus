@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { Profile, Attendance } from '@/types';
 import { formatHours, formatTime } from '@/lib/utils/format';
+import { formatTimeInZone } from '@/lib/attendance/day';
 import { format } from 'date-fns';
 import StatCard from '@/components/shared/StatCard';
 import { useRouter } from 'next/navigation';
@@ -159,7 +160,9 @@ export default function SupervisorClient({ summaries, stats }: Props) {
                             size="small"
                           />
                           <Typography variant="caption" display="block" color="text.secondary">
-                            {formatTime(s.today_record.clock_in)}
+                            {s.today_record.timezone
+                              ? formatTimeInZone(s.today_record.clock_in, s.today_record.timezone)
+                              : formatTime(s.today_record.clock_in)}
                           </Typography>
                         </Box>
                       ) : (

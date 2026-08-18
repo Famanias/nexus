@@ -106,6 +106,7 @@ create table if not exists attendance (
   clock_in_distance_meters numeric(8,2),
   clock_out_distance_meters numeric(8,2),
   total_hours numeric(6,4),
+  timezone text,
   date date not null default current_date,
   notes text,
   created_at timestamptz not null default now(),
@@ -114,6 +115,8 @@ create table if not exists attendance (
 
 -- Add org_id column to attendance if upgrading from single-org schema
 alter table attendance add column if not exists org_id uuid references organizations(id) on delete cascade;
+-- Timezone of the clocking OJT's computer, used to bucket the attendance day and render their local time
+alter table attendance add column if not exists timezone text;
 
 -- ============================================================
 -- KANBAN COLUMNS TABLE

@@ -55,6 +55,7 @@ export interface Attendance {
   clock_in_distance_meters?: number;
   clock_out_distance_meters?: number;
   total_hours?: number;
+  timezone?: string;
   date: string;
   notes?: string;
   created_at: string;
