@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedOrgIntegrations, setCachedOrgIntegrations, ResolvedOrgIntegrations } from '@/lib/integrations/cache';
+import { decryptSecret } from '@/lib/services/encryption';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     for (const row of integrations || []) {
       resIntegrations[row.provider] = {
         enabled: row.enabled,
-        webhookUrl: row.secrets?.webhook_url || null,
+        webhookUrl: row.secrets?.webhook_url ? decryptSecret(row.secrets.webhook_url) : null,
         config: row.config || {},
       };
     }

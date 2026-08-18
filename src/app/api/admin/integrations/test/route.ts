@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateWebhookUrl, IntegrationProvider } from '@/lib/integrations/validation';
+import { decryptSecret } from '@/lib/services/encryption';
 
 // Rate limit memory map: orgId -> timestamp
 const rateLimitMap = new Map<string, number>();
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
         .eq('provider', provider)
         .maybeSingle();
 
-      targetUrl = integration?.secrets?.webhook_url;
+      targetUrl = integration?.secrets?.webhook_url ? decryptSecret(integration.secrets.webhook_url) : undefined;
     }
 
     if (!targetUrl) {
