@@ -20,7 +20,7 @@ export function completionPercent(total: number, required: number): number {
 }
 
 export interface AttendanceSummaryInput {
-  rows: { total_hours?: number | null }[];
+  rows: { total_hours?: number | null; date?: string }[];
   requiredHours: number;
   role?: string | null;
   systemRole?: string | null;
@@ -38,8 +38,11 @@ export function computeAttendanceSummary({
 }: AttendanceSummaryInput): AttendanceSummary | null {
   if (!isOjt(role, systemRole)) return null;
   const totalHours = rows.reduce((acc, row) => acc + (row.total_hours ?? 0), 0);
+  const dates = rows.map((r) => r.date).filter(Boolean);
+  const totalDays = dates.length > 0 ? new Set(dates).size : rows.length;
+
   return {
-    total_days: rows.length,
+    total_days: totalDays,
     total_hours: totalHours,
     required_hours: requiredHours,
     remaining_hours: Math.max(0, requiredHours - totalHours),

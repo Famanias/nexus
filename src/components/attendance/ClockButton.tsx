@@ -25,11 +25,12 @@ import { clockIn, clockOut } from '@/actions/attendance';
 
 interface Props {
   userId: string;
-  todayRecord: Attendance | null;
+  todayRecord?: Attendance | null;
+  todayRecords?: Attendance[];
   onSuccess: () => void;
 }
 
-export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
+export default function ClockButton({ userId, todayRecord, todayRecords, onSuccess }: Props) {
   const { location, getLocation } = useLocation();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,14 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
   const isPersonalMode = !profile?.org_id;
   const supabase = createClient();
 
-  const isClockedIn = !!todayRecord?.clock_in && !todayRecord?.clock_out;
+  const records = todayRecords && todayRecords.length > 0
+    ? todayRecords
+    : (todayRecord ? [todayRecord] : []);
+
+  const activeRecord = records.find((r) => !r.clock_out) ?? (todayRecord && !todayRecord.clock_out ? todayRecord : null);
+  const isClockedIn = !!activeRecord;
+  const completedTodaySessions = records.filter((r) => !!r.clock_out);
+  const totalTodayHours = completedTodaySessions.reduce((acc, r) => acc + (r.total_hours ?? 0), 0);
 
   // Update clock every second
   useEffect(() => {
@@ -90,19 +98,12 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
 
     if (!isClockedIn) {
       // CLOCK IN
-      if (todayRecord) {
-        // Already has a record but both in/out exist — new shift not needed
-        setError('You have already completed your attendance for today.');
-        setLoading(false);
-        return;
-      }
-
       const result = await clockIn({ latitude: lat, longitude: lng, timezone });
 
       if (result.error) {
         setError(result.error);
       } else {
-        setSuccess('Successfully clocked in! Have a productive day.');
+        setSuccess('Successfully clocked in! Have a productive session.');
         // Emit attendance.clocked_in event
         emitClientEvent('attendance.clocked_in', {
           userId,
@@ -116,7 +117,7 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
     } else {
       // CLOCK OUT
       const result = await clockOut({
-        attendanceId: todayRecord!.id,
+        attendanceId: activeRecord?.id,
         latitude: lat,
         longitude: lng,
         timezone,
@@ -125,17 +126,17 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
       if (result.error) {
         setError(result.error);
       } else {
-        const totalHours = result.data?.total_hours;
+        const sessionHours = result.data?.total_hours ?? 0;
         setSuccess(
-          `Successfully clocked out! You worked ${formatHours(totalHours ?? 0)} today.`
+          `Successfully clocked out! You logged ${formatHours(sessionHours)} in this session.`
         );
         // Emit attendance.clocked_out event
         emitClientEvent('attendance.clocked_out', {
-          attendanceId: todayRecord!.id,
+          attendanceId: activeRecord?.id,
           userId,
-          clockIn: todayRecord!.clock_in!,
+          clockIn: activeRecord?.clock_in!,
           clockOut: result.data?.clock_out,
-          totalHours,
+          totalHours: sessionHours,
           date: today,
         });
         onSuccess();
@@ -173,50 +174,78 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
         <Typography variant="body1" color="rgba(255,255,255,0.7)">
           {mounted && currentTime ? format(currentTime, 'EEEE, MMMM dd, yyyy') : 'Loading...'}
         </Typography>
-        {isClockedIn && (
+        {isClockedIn ? (
           <Chip
             label="● Currently Clocked In"
-            sx={{ mt: 1.5, bgcolor: 'rgba(255,255,255,0.2)', color: '#6ee7b7', border: 'none' }}
+            sx={{ mt: 1.5, bgcolor: 'rgba(255,255,255,0.2)', color: '#6ee7b7', border: 'none', fontWeight: 600 }}
           />
-        )}
+        ) : completedTodaySessions.length > 0 ? (
+          <Chip
+            label={`✓ Clocked Out (${completedTodaySessions.length} session${completedTodaySessions.length > 1 ? 's' : ''} today)`}
+            sx={{ mt: 1.5, bgcolor: 'rgba(255,255,255,0.15)', color: '#e0e7ff', border: 'none' }}
+          />
+        ) : null}
       </Box>
 
       <CardContent sx={{ p: 3 }}>
-        {/* Today's attendance info */}
-        {todayRecord && (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 2,
-              mb: 3,
-              p: 2,
-              bgcolor: 'action.hover',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="caption" color="text.secondary">Clock In</Typography>
-              <Typography variant="body1" fontWeight={600}>
-                {todayRecord.clock_in ? formatTime(todayRecord.clock_in) : '—'}
+        {/* Today's sessions breakdown */}
+        {records.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Today&apos;s Sessions ({records.length})
               </Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Clock Out</Typography>
-              <Typography variant="body1" fontWeight={600}>
-                {todayRecord.clock_out ? formatTime(todayRecord.clock_out) : '—'}
-              </Typography>
-            </Box>
-            {todayRecord.total_hours && (
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography variant="caption" color="text.secondary">Total Hours Today</Typography>
-                <Typography variant="body1" fontWeight={700} color="primary.main">
-                  {formatHours(todayRecord.total_hours)}
+              {totalTodayHours > 0 && (
+                <Typography variant="caption" fontWeight={700} color="primary.main">
+                  Total Today: {formatHours(totalTodayHours)}
                 </Typography>
-              </Box>
-            )}
+              )}
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {records.map((rec, idx) => {
+                const isActive = !rec.clock_out;
+                return (
+                  <Box
+                    key={rec.id || idx}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: isActive ? 'rgba(16, 185, 129, 0.08)' : 'action.hover',
+                      border: '1px solid',
+                      borderColor: isActive ? 'rgba(16, 185, 129, 0.3)' : 'divider',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Chip
+                        label={`#${idx + 1}`}
+                        size="small"
+                        sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
+                      />
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {rec.clock_in ? formatTime(rec.clock_in) : '—'}
+                          {' → '}
+                          {rec.clock_out ? formatTime(rec.clock_out) : 'In Progress'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      {rec.clock_out ? (
+                        <Typography variant="body2" fontWeight={700} color="success.main">
+                          {rec.total_hours ? formatHours(rec.total_hours) : '—'}
+                        </Typography>
+                      ) : (
+                        <Chip label="Active" color="success" size="small" sx={{ height: 22, fontSize: 11, fontWeight: 600 }} />
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         )}
 
@@ -273,41 +302,33 @@ export default function ClockButton({ userId, todayRecord, onSuccess }: Props) {
           </Box>
         )}
 
-        {/* Clock button */}
-        {!todayRecord?.clock_out && (
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={handleClockAction}
-            disabled={loading}
-            startIcon={
-              loading ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : isClockedIn ? (
-                <ClockOutIcon />
-              ) : (
-                <ClockInIcon />
-              )
-            }
-            sx={{
-              py: 1.5,
-              fontSize: 16,
-              fontWeight: 700,
-              bgcolor: isClockedIn ? '#dc2626' : '#6366f1',
-              '&:hover': { bgcolor: isClockedIn ? '#b91c1c' : '#4338ca' },
-              borderRadius: 2,
-            }}
-          >
-            {loading ? 'Processing...' : isClockedIn ? 'Clock Out' : 'Clock In'}
-          </Button>
-        )}
-
-        {todayRecord?.clock_out && (
-          <Alert severity="info" sx={{ borderRadius: 2 }}>
-            You have completed your attendance for today. See you tomorrow!
-          </Alert>
-        )}
+        {/* Clock button — Always available to toggle between Clock In and Clock Out */}
+        <Button
+          fullWidth
+          variant="contained"
+          size="large"
+          onClick={handleClockAction}
+          disabled={loading}
+          startIcon={
+            loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : isClockedIn ? (
+              <ClockOutIcon />
+            ) : (
+              <ClockInIcon />
+            )
+          }
+          sx={{
+            py: 1.5,
+            fontSize: 16,
+            fontWeight: 700,
+            bgcolor: isClockedIn ? '#dc2626' : '#6366f1',
+            '&:hover': { bgcolor: isClockedIn ? '#b91c1c' : '#4338ca' },
+            borderRadius: 2,
+          }}
+        >
+          {loading ? 'Processing...' : isClockedIn ? 'Clock Out' : (completedTodaySessions.length > 0 ? 'Clock In Again' : 'Clock In')}
+        </Button>
       </CardContent>
     </Card>
   );

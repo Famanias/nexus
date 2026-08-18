@@ -12,18 +12,19 @@ export default async function AdminDashboard() {
     await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'ojt').eq('is_active', true),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'supervisor').eq('is_active', true),
-      supabase.from('attendance').select('id').eq('date', today).not('clock_in', 'is', null),
+      supabase.from('attendance').select('user_id').eq('date', today).not('clock_in', 'is', null),
       supabase.from('attendance').select('total_hours').not('total_hours', 'is', null),
     ]);
 
   const total_hours = (allHours ?? []).reduce((a: number, r: { total_hours: number | null }) => a + (r.total_hours ?? 0), 0);
+  const present_today = new Set((todayAtt ?? []).map((a) => a.user_id)).size;
 
   return (
     <AdminDashboardClient
       stats={{
         total_ojts: ojts ?? 0,
         total_supervisors: supervisors ?? 0,
-        present_today: todayAtt?.length ?? 0,
+        present_today,
         total_hours_all: total_hours,
       }}
     />

@@ -20,8 +20,11 @@ export default async function SupervisorPage() {
   const summaries = (ojts ?? []).map((ojt: Profile) => {
     const ojtAttendance = (allAttendance ?? []).filter((a) => a.user_id === ojt.id);
     const total_hours = ojtAttendance.reduce((acc: number, a) => acc + (a.total_hours ?? 0), 0);
-    const total_days = ojtAttendance.length;
-    const today_record = (todayAttendance ?? []).find((a) => a.user_id === ojt.id);
+    const total_days = new Set(ojtAttendance.map((a) => a.date).filter(Boolean)).size;
+    const userToday = (todayAttendance ?? []).filter((a) => a.user_id === ojt.id);
+    const activeToday = userToday.find((a) => !a.clock_out);
+    const latestToday = userToday.length > 0 ? userToday[userToday.length - 1] : undefined;
+    const today_record = activeToday ?? latestToday;
     const completion_pct = completionPercent(total_hours, ojt.required_hours);
     return { profile: ojt, total_hours, total_days, today_record, completion_pct };
   });

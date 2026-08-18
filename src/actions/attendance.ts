@@ -24,7 +24,7 @@ interface ClockInResult {
 }
 
 interface ClockOutParams extends ClockActionParams {
-  attendanceId: string;
+  attendanceId?: string;
 }
 
 /**
@@ -60,18 +60,18 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
     return { error: 'Your timezone could not be determined. Please enable timezone access and try again.' };
   }
 
-  const { data: existing } = await admin
+  // Ensure user is not currently in an active open session for today
+  const { data: activeRows } = await admin
     .from('attendance')
-    .select('id, clock_out')
+    .select('id')
     .eq('user_id', user.id)
     .eq('date', date)
-    .maybeSingle();
+    .is('clock_out', null)
+    .order('clock_in', { ascending: false })
+    .limit(1);
 
-  if (existing?.clock_out) {
-    return { error: 'You have already completed your attendance for today.' };
-  }
-  if (existing) {
-    return { error: 'You are already clocked in.' };
+  if (activeRows && activeRows.length > 0) {
+    return { error: 'You are already clocked in. Please clock out of your active session first.' };
   }
 
   const loc = await resolveLocation(admin, profile?.org_id, params);
@@ -99,7 +99,7 @@ export async function clockIn(params: ClockActionParams = {}): Promise<ClockInRe
  * Clock-out. The server records the clock-out timestamp and recomputes
  * the total hours via the DB trigger.
  */
-export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
+export async function clockOut(params: ClockOutParams = {}): Promise<ClockInResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -109,10 +109,26 @@ export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
 
   const admin = await createAdminClient();
 
+  let targetId = params.attendanceId;
+  if (!targetId) {
+    const { data: activeRows } = await admin
+      .from('attendance')
+      .select('id')
+      .eq('user_id', user.id)
+      .is('clock_out', null)
+      .order('clock_in', { ascending: false })
+      .limit(1);
+
+    if (!activeRows || activeRows.length === 0) {
+      return { error: 'No active clock-in session found.' };
+    }
+    targetId = activeRows[0].id;
+  }
+
   const { data: record } = await admin
     .from('attendance')
     .select('id, user_id, clock_out')
-    .eq('id', params.attendanceId)
+    .eq('id', targetId)
     .single();
 
   if (!record) return { error: 'Attendance record not found.' };
@@ -143,7 +159,7 @@ export async function clockOut(params: ClockOutParams): Promise<ClockInResult> {
         ? { timezone: params.timezone }
         : {}),
     })
-    .eq('id', params.attendanceId)
+    .eq('id', targetId)
     .select()
     .single();
 

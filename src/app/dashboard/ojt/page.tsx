@@ -18,11 +18,11 @@ export default async function OJTPage() {
   const userId = user!.id;
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const [{ data: profile }, { data: todayRecord }, { data: allAttendance }] =
+  const [{ data: profile }, { data: todayRecords }, { data: allAttendance }] =
     await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
-      supabase.from('attendance').select('*').eq('user_id', userId).eq('date', today).maybeSingle(),
-      supabase.from('attendance').select('total_hours').eq('user_id', userId).not('total_hours', 'is', null),
+      supabase.from('attendance').select('*').eq('user_id', userId).eq('date', today).order('clock_in', { ascending: true }),
+      supabase.from('attendance').select('total_hours, date').eq('user_id', userId).not('total_hours', 'is', null),
     ]);
 
   if (!profile) redirect('/login');
@@ -37,10 +37,15 @@ export default async function OJTPage() {
     systemRole: (profile as Profile).system_role,
   })!;
 
+  const initialTodayList = todayRecords ?? [];
+  const initialActive = initialTodayList.find((r) => !r.clock_out) ?? null;
+  const initialLatest = initialTodayList.length > 0 ? initialTodayList[initialTodayList.length - 1] : null;
+
   return (
     <OJTClient
       profile={profile as Profile}
-      initialTodayRecord={todayRecord}
+      initialTodayRecords={initialTodayList}
+      initialTodayRecord={initialActive ?? initialLatest}
       initialSummary={summary}
     />
   );

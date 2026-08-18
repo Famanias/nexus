@@ -18,16 +18,23 @@ import { useRouter } from 'next/navigation';
 
 interface Props {
   profile: Profile;
-  initialTodayRecord: Attendance | null;
+  initialTodayRecord?: Attendance | null;
+  initialTodayRecords?: Attendance[];
   initialSummary: AttendanceSummary;
 }
 
-export default function OJTClient({ profile, initialTodayRecord, initialSummary }: Props) {
+export default function OJTClient({
+  profile,
+  initialTodayRecord = null,
+  initialTodayRecords = [],
+  initialSummary,
+}: Props) {
   // useAttendance still provides refresh / real-time updates after clock in/out
-  const { todayRecord, summary, refresh } = useAttendance(profile.id);
+  const { todayRecord, todayRecords, summary, refresh } = useAttendance(profile.id);
   const router = useRouter();
 
   // Use initial data if the hook hasn't loaded yet
+  const displayRecords = todayRecords.length > 0 ? todayRecords : initialTodayRecords;
   const displayRecord = todayRecord ?? initialTodayRecord;
   const displaySummary = summary ?? initialSummary;
 
@@ -115,6 +122,7 @@ export default function OJTClient({ profile, initialTodayRecord, initialSummary 
           <ClockButton
             userId={profile.id}
             todayRecord={displayRecord}
+            todayRecords={displayRecords}
             onSuccess={refresh}
           />
         </Grid>

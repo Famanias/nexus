@@ -20,7 +20,7 @@ export default async function ReportsPage() {
   const reports = (ojts ?? []).map((ojt: Profile) => {
     const all = (allAtt ?? []).filter((a) => a.user_id === ojt.id);
     const total_hours = all.reduce((s: number, a) => s + (a.total_hours ?? 0), 0);
-    const total_days = all.length;
+    const total_days = new Set(all.map((a) => a.date).filter(Boolean)).size;
     return {
       profile: ojt,
       total_hours,

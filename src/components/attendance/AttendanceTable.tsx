@@ -39,7 +39,8 @@ export default function AttendanceTable({ userId, showUser = false, initialRecor
     let query = supabase
       .from('attendance')
       .select('*, profile:profiles(id, full_name, email, avatar_url, department)')
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('clock_in', { ascending: false });
 
     if (!allTime && from && to) {
       query = query.gte('date', from).lte('date', to);

@@ -54,4 +54,20 @@ describe('computeAttendanceSummary', () => {
     expect(summary?.remaining_hours).toBe(584);
     expect(summary?.completion_percentage).toBeCloseTo((16 / 600) * 100);
   });
+
+  it('aggregates multiple sessions on the same date as 1 unique day', () => {
+    const multiSessionRows = [
+      { total_hours: 4, date: '2026-08-18' },
+      { total_hours: 3.5, date: '2026-08-18' },
+      { total_hours: 8, date: '2026-08-19' },
+    ];
+    const summary = computeAttendanceSummary({ rows: multiSessionRows, requiredHours: 100, role: 'ojt' });
+    expect(summary).toEqual({
+      total_days: 2,
+      total_hours: 15.5,
+      required_hours: 100,
+      remaining_hours: 84.5,
+      completion_percentage: 15.5,
+    });
+  });
 });

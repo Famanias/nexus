@@ -25,7 +25,8 @@ export default async function AttendancePage() {
     .select('*, profile:profiles(id, full_name, email, avatar_url, department)')
     .gte('date', start)
     .lte('date', end)
-    .order('date', { ascending: false });
+    .order('date', { ascending: false })
+    .order('clock_in', { ascending: false });
 
   if (isOjt) query = query.eq('user_id', user!.id);
 

@@ -65,8 +65,8 @@ export default function ReportsClient({ initialReports }: Props) {
       const mon = (monthAtt ?? []).filter((a) => a.user_id === ojt.id);
       const total_hours = all.reduce((s, a) => s + (a.total_hours ?? 0), 0);
       const this_month_hours = mon.reduce((s, a) => s + (a.total_hours ?? 0), 0);
-      const total_days = all.length;
-      const this_month_days = mon.length;
+      const total_days = new Set(all.map((a) => a.date).filter(Boolean)).size;
+      const this_month_days = new Set(mon.map((a) => a.date).filter(Boolean)).size;
       return {
         profile: ojt,
         total_hours,
