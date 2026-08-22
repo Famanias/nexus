@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { clockIn, clockOut } from '@/actions/attendance';
 import * as sessionModule from '@/lib/session';
 import * as cacheModule from '@/lib/cache';
+import type { User } from '@supabase/supabase-js';
+import type { Profile, SiteSettings } from '@/types';
 
 // Mock session module
 vi.mock('@/lib/session', () => ({
@@ -24,6 +26,38 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 
+const mockUser: User = {
+  id: 'user-1',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: '2026-08-01T00:00:00Z',
+} as unknown as User;
+
+const createMockProfile = (overrides?: Partial<Profile>): Profile => ({
+  id: 'user-1',
+  full_name: 'Test User',
+  email: 'test@example.com',
+  role: 'ojt',
+  required_hours: 600,
+  is_active: true,
+  created_at: '2026-08-01T00:00:00Z',
+  updated_at: '2026-08-01T00:00:00Z',
+  ...overrides,
+});
+
+const createMockSiteSettings = (overrides?: Partial<SiteSettings>): SiteSettings => ({
+  id: 'settings-1',
+  org_id: 'org-1',
+  site_name: 'Main Office',
+  latitude: 14.5995,
+  longitude: 120.9842,
+  radius_meters: 500,
+  require_location_verification: false,
+  updated_at: '2026-08-01T00:00:00Z',
+  ...overrides,
+});
+
 describe('Attendance Server Actions (clockIn / clockOut)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,8 +76,8 @@ describe('Attendance Server Actions (clockIn / clockOut)', () => {
 
     it('returns error if user effective role is not ojt', async () => {
       vi.mocked(sessionModule.getSession).mockResolvedValueOnce({
-        user: { id: 'user-1' } as any,
-        profile: { id: 'user-1', role: 'supervisor' } as any,
+        user: mockUser,
+        profile: createMockProfile({ role: 'supervisor' }),
       });
       vi.mocked(sessionModule.getEffectiveRole).mockReturnValueOnce('supervisor');
 
@@ -53,8 +87,8 @@ describe('Attendance Server Actions (clockIn / clockOut)', () => {
 
     it('returns error if user already has an active session for today', async () => {
       vi.mocked(sessionModule.getSession).mockResolvedValueOnce({
-        user: { id: 'user-1' } as any,
-        profile: { id: 'user-1', role: 'ojt', org_id: 'org-1' } as any,
+        user: mockUser,
+        profile: createMockProfile({ role: 'ojt', org_id: 'org-1' }),
       });
       vi.mocked(sessionModule.getEffectiveRole).mockReturnValueOnce('ojt');
       vi.mocked(cacheModule.getCachedSiteSettings).mockResolvedValueOnce(null);
@@ -85,13 +119,13 @@ describe('Attendance Server Actions (clockIn / clockOut)', () => {
 
     it('successfully clocks in when validations pass', async () => {
       vi.mocked(sessionModule.getSession).mockResolvedValueOnce({
-        user: { id: 'user-1' } as any,
-        profile: { id: 'user-1', role: 'ojt', org_id: 'org-1' } as any,
+        user: mockUser,
+        profile: createMockProfile({ role: 'ojt', org_id: 'org-1' }),
       });
       vi.mocked(sessionModule.getEffectiveRole).mockReturnValueOnce('ojt');
-      vi.mocked(cacheModule.getCachedSiteSettings).mockResolvedValueOnce({
-        require_location_verification: false,
-      } as any);
+      vi.mocked(cacheModule.getCachedSiteSettings).mockResolvedValueOnce(
+        createMockSiteSettings({ require_location_verification: false })
+      );
 
       // Active rows query returns empty
       mockFrom.mockReturnValueOnce({
@@ -137,8 +171,8 @@ describe('Attendance Server Actions (clockIn / clockOut)', () => {
   describe('clockOut', () => {
     it('returns error if no active session is found', async () => {
       vi.mocked(sessionModule.getSession).mockResolvedValueOnce({
-        user: { id: 'user-1' } as any,
-        profile: { id: 'user-1', role: 'ojt', org_id: 'org-1' } as any,
+        user: mockUser,
+        profile: createMockProfile({ role: 'ojt', org_id: 'org-1' }),
       });
       vi.mocked(sessionModule.getEffectiveRole).mockReturnValueOnce('ojt');
       vi.mocked(cacheModule.getCachedSiteSettings).mockResolvedValueOnce(null);
@@ -167,8 +201,8 @@ describe('Attendance Server Actions (clockIn / clockOut)', () => {
 
     it('successfully clocks out active session', async () => {
       vi.mocked(sessionModule.getSession).mockResolvedValueOnce({
-        user: { id: 'user-1' } as any,
-        profile: { id: 'user-1', role: 'ojt', org_id: 'org-1' } as any,
+        user: mockUser,
+        profile: createMockProfile({ role: 'ojt', org_id: 'org-1' }),
       });
       vi.mocked(sessionModule.getEffectiveRole).mockReturnValueOnce('ojt');
       vi.mocked(cacheModule.getCachedSiteSettings).mockResolvedValueOnce(null);

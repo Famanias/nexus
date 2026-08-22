@@ -22,7 +22,11 @@ vi.mock('@/lib/supabase/client', () => ({
 
 // Mock @mui/icons-material explicitly
 vi.mock('@mui/icons-material', () => {
-  const createIcon = (name: string) => () => <span data-testid={`icon-${name}`}>{name}</span>;
+  const createIcon = (name: string) => {
+    const Icon = () => <span data-testid={`icon-${name}`}>{name}</span>;
+    Icon.displayName = `MockMaterialIcon(${name})`;
+    return Icon;
+  };
   return {
     Search: createIcon('Search'),
     CheckCircle: createIcon('CheckCircle'),
@@ -121,8 +125,8 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
           user_id: 'user-1',
           date: '2026-08-18',
           clock_in: '2026-08-18T08:00:00Z',
-          clock_out: null,
           created_at: '2026-08-18T08:00:00Z',
+          updated_at: '2026-08-18T08:00:00Z',
         },
       ];
       const fakeSummary: AttendanceSummary = {
@@ -159,12 +163,16 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
           clock_out: '2026-08-18T17:00:00Z',
           total_hours: 9,
           created_at: '2026-08-18T08:00:00Z',
+          updated_at: '2026-08-18T17:00:00Z',
           profile: {
             id: 'user-1',
             full_name: 'John Trainee',
             email: 'john@example.com',
             role: 'ojt',
             is_active: true,
+            required_hours: 600,
+            created_at: '2026-08-01T00:00:00Z',
+            updated_at: '2026-08-01T00:00:00Z',
           },
         },
       ];
@@ -192,6 +200,7 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
           color: '#6366f1',
           position: 0,
           created_at: '2026-08-01',
+          updated_at: '2026-08-01',
           tasks: [],
         },
         {
@@ -200,6 +209,7 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
           color: '#22c55e',
           position: 1,
           created_at: '2026-08-01',
+          updated_at: '2026-08-01',
           tasks: [],
         },
       ];
@@ -210,6 +220,9 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
         email: 'admin@example.com',
         role: 'admin',
         is_active: true,
+        required_hours: 0,
+        created_at: '2026-08-01T00:00:00Z',
+        updated_at: '2026-08-01T00:00:00Z',
       };
 
       render(
@@ -235,7 +248,9 @@ describe('Client Data Modules (Server Initial State Trust)', () => {
           email: 'alice@example.com',
           role: 'ojt',
           is_active: true,
+          required_hours: 600,
           created_at: '2026-08-01T00:00:00Z',
+          updated_at: '2026-08-01T00:00:00Z',
         },
       ];
 

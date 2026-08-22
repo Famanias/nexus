@@ -639,9 +639,17 @@ export default function UsersClient({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRevokeDialog(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleRevokeInvite}>
-            Revoke
+          <Button onClick={() => setRevokeDialog(null)} disabled={revoking}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleRevokeInvite}
+            disabled={revoking}
+            startIcon={revoking ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {revoking ? 'Revoking...' : 'Revoke'}
           </Button>
         </DialogActions>
       </Dialog>

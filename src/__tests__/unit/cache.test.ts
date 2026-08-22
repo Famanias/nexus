@@ -9,7 +9,8 @@ import {
 
 // Mock Next.js cache
 const mockRevalidateTag = vi.fn();
-const mockUnstableCache = vi.fn((fn: () => Promise<unknown>, keys: string[], opts: { tags?: string[]; revalidate?: number }) => {
+const mockUnstableCache = vi.fn((fn: () => Promise<unknown>, ...args: unknown[]) => {
+  void args;
   // Execute fn directly in tests while capturing the options passed
   return async () => fn();
 });
@@ -22,9 +23,6 @@ vi.mock('next/cache', () => ({
 
 
 // Mock supabase client
-const mockMaybeSingle = vi.fn();
-const mockEq = vi.fn();
-const mockSelect = vi.fn();
 const mockFrom = vi.fn();
 
 vi.mock('@supabase/supabase-js', () => ({
