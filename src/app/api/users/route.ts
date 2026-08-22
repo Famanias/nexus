@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
+import { getSession, getEffectiveRole } from '@/lib/session';
+import { revalidateOjtsTag } from '@/lib/cache';
 import { emitEvent } from '@/lib/automation';
 import type { UserCreatedPayload, UserDeletedPayload } from '@/lib/automation';
 
@@ -13,18 +14,13 @@ function getAdminClient() {
 }
 
 async function getCallerOrgId(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('org_id, role, system_role')
-    .eq('id', user.id)
-    .single();
-  const callerRole = profile?.system_role ?? profile?.role;
-  if (!profile || callerRole !== 'admin') return null;
+  const { user, profile } = await getSession();
+  if (!user || !profile) return null;
+  const callerRole = getEffectiveRole(profile);
+  if (callerRole !== 'admin') return null;
   return profile.org_id ?? null;
 }
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,7 +76,10 @@ export async function POST(request: NextRequest) {
       role,
     }, orgId);
 
+    revalidateOjtsTag(orgId);
+
     return NextResponse.json({ success: true, userId: authData.user.id });
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -141,7 +140,10 @@ export async function DELETE(request: NextRequest) {
       userId,
     }, orgId);
 
+    revalidateOjtsTag(orgId);
+
     return NextResponse.json({ success: true });
+
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

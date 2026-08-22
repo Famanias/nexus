@@ -1,55 +1,41 @@
 import { createClient } from '@/lib/supabase/server';
 import SettingsClient from './SettingsClient';
-import { Organization, Profile } from '@/types';
+import { Organization } from '@/types';
 import RequireOrganization from '@/components/shared/RequireOrganization';
+import { requireProfile } from '@/lib/session';
+import { getCachedSiteSettings } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SiteSettingsPage() {
+  const { profile } = await requireProfile();
   const supabase = await createClient();
-  
-  // Fetch current user and their organization
-  const { data: { user } } = await supabase.auth.getUser();
+
   let organization: Organization | null = null;
-  let hasOrg = false;
-  let fullProfile: Profile | null = null;
-  
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
+  const hasOrg = Boolean(profile.org_id);
+
+  if (profile.org_id) {
+    const { data: orgData } = await supabase
+      .from('organizations')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', profile.org_id)
       .single();
-      
-    if (profile) {
-      fullProfile = profile;
-      if (profile.org_id) {
-        hasOrg = true;
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('id', profile.org_id)
-          .single();
-        if (orgData) {
-          organization = orgData;
-        }
-      }
+    if (orgData) {
+      organization = orgData;
     }
   }
 
-  const { data: settings } = await supabase
-    .from('site_settings')
-    .select('*')
-    .limit(1)
-    .maybeSingle();
+  const settings = await getCachedSiteSettings(profile.org_id);
 
   if (!settings && hasOrg) {
     return <div>No site settings found. Please contact an administrator.</div>;
   }
 
   return (
-    <RequireOrganization featureName="Site Settings" serverProfile={fullProfile}>
-      <SettingsClient initialSettings={settings!} serverOrganization={organization} profile={fullProfile} />
+    <RequireOrganization featureName="Site Settings" serverProfile={profile}>
+      <SettingsClient initialSettings={settings!} serverOrganization={organization} profile={profile} />
     </RequireOrganization>
   );
 }
+
+

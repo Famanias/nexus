@@ -152,7 +152,17 @@ export default function KanbanBoard({ initialColumns, initialOjts, initialProfil
     setIsRefreshing(false);
   }, [buildEnrichedCols, supabase]);
 
-  useEffect(() => { fetchBoard(false); }, [fetchBoard]);
+  const initialMountRef = React.useRef(false);
+  useEffect(() => {
+    if (!initialMountRef.current) {
+      initialMountRef.current = true;
+      if (initialColumns && initialColumns.length > 0) {
+        return;
+      }
+    }
+    fetchBoard(false);
+  }, [fetchBoard, initialColumns]);
+
 
   // ---- DnD Handlers ----
 

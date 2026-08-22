@@ -1,26 +1,29 @@
 import { createClient } from '@/lib/supabase/server';
 import { Profile } from '@/types';
 import { format } from 'date-fns';
-import { completionPercent } from '@/lib/attendance/summary';
+import { completionPercent, getAttendanceSummaries } from '@/lib/attendance/summary';
 import SupervisorClient from './SupervisorClient';
+import { requireProfile } from '@/lib/session';
+import { getCachedActiveOjts } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SupervisorPage() {
+  const { profile } = await requireProfile();
   const supabase = await createClient();
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const [{ data: ojts }, { data: todayAttendance }, { data: allAttendance }] =
+  const [ojts, { data: todayAttendance }, summaryMap] =
     await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
+      getCachedActiveOjts(profile.org_id),
       supabase.from('attendance').select('*').eq('date', today),
-      supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
+      getAttendanceSummaries(supabase, profile.org_id),
     ]);
 
   const summaries = (ojts ?? []).map((ojt: Profile) => {
-    const ojtAttendance = (allAttendance ?? []).filter((a) => a.user_id === ojt.id);
-    const total_hours = ojtAttendance.reduce((acc: number, a) => acc + (a.total_hours ?? 0), 0);
-    const total_days = new Set(ojtAttendance.map((a) => a.date).filter(Boolean)).size;
+    const userSummary = summaryMap.get(ojt.id);
+    const total_hours = userSummary?.total_hours ?? 0;
+    const total_days = userSummary?.total_days ?? 0;
     const userToday = (todayAttendance ?? []).filter((a) => a.user_id === ojt.id);
     const activeToday = userToday.find((a) => !a.clock_out);
     const latestToday = userToday.length > 0 ? userToday[userToday.length - 1] : undefined;
@@ -28,6 +31,7 @@ export default async function SupervisorPage() {
     const completion_pct = completionPercent(total_hours, ojt.required_hours);
     return { profile: ojt, total_hours, total_days, today_record, completion_pct };
   });
+
 
   const present = summaries.filter((s) => s.today_record?.clock_in).length;
   const completed = summaries.filter((s) => s.completion_pct >= 100).length;

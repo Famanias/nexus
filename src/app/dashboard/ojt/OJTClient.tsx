@@ -29,14 +29,16 @@ export default function OJTClient({
   initialTodayRecords = [],
   initialSummary,
 }: Props) {
-  // useAttendance still provides refresh / real-time updates after clock in/out
-  const { todayRecord, todayRecords, summary, refresh } = useAttendance(profile.id);
+  const { todayRecord, todayRecords, summary, refresh } = useAttendance(profile.id, {
+    initialTodayRecords,
+    initialSummary,
+  });
   const router = useRouter();
 
-  // Use initial data if the hook hasn't loaded yet
   const displayRecords = todayRecords.length > 0 ? todayRecords : initialTodayRecords;
   const displayRecord = todayRecord ?? initialTodayRecord;
   const displaySummary = summary ?? initialSummary;
+
 
   return (
     <Box sx={{ p: 3 }}>

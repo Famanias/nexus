@@ -1,6 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { getSession, getEffectiveRole } from '@/lib/session';
+import { revalidateSettingsTag } from '@/lib/cache';
 
 export interface SiteSettingsInput {
   id: string;
@@ -13,8 +15,8 @@ export interface SiteSettingsInput {
 }
 
 export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ error?: string }> {
+  const { user, profile } = await getSession();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { error } = await supabase
     .from('site_settings')
@@ -30,24 +32,20 @@ export async function saveSiteSettings(input: SiteSettingsInput): Promise<{ erro
     .eq('id', input.id);
 
   if (error) return { error: error.message };
+  revalidateSettingsTag(profile?.org_id);
   return {};
 }
 
 export async function regenerateInviteCode(): Promise<{ code?: string; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getSession();
   if (!user) return { error: 'Unauthorized' };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('org_id, role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin' || !profile.org_id) {
+  const effectiveRole = getEffectiveRole(profile);
+  if (!profile || effectiveRole !== 'admin' || !profile.org_id) {
     return { error: 'Only organization admins can regenerate the invite code.' };
   }
 
+  const supabase = await createClient();
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
   for (let i = 0; i < 8; i++) {
@@ -60,5 +58,8 @@ export async function regenerateInviteCode(): Promise<{ code?: string; error?: s
     .eq('id', profile.org_id);
 
   if (error) return { error: error.message };
+  revalidateSettingsTag(profile.org_id);
   return { code };
 }
+
+

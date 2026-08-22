@@ -1,26 +1,26 @@
 import { createClient } from '@/lib/supabase/server';
 import { Profile } from '@/types';
-import { completionPercent } from '@/lib/attendance/summary';
+import { completionPercent, getAttendanceSummaries } from '@/lib/attendance/summary';
 import ReportsClient from './ReportsClient';
 import RequireOrganization from '@/components/shared/RequireOrganization';
+import { requireProfile } from '@/lib/session';
+import { getCachedActiveOjts } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
+  const { profile } = await requireProfile();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: ojts }, { data: allAtt }, { data: profile }] =
-    await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'ojt').eq('is_active', true),
-      supabase.from('attendance').select('user_id, total_hours, date').not('total_hours', 'is', null),
-      supabase.from('profiles').select('*').eq('id', user!.id).single(),
-    ]);
+  const [ojts, summaryMap] = await Promise.all([
+    getCachedActiveOjts(profile.org_id),
+    getAttendanceSummaries(supabase, profile.org_id),
+  ]);
 
   const reports = (ojts ?? []).map((ojt: Profile) => {
-    const all = (allAtt ?? []).filter((a) => a.user_id === ojt.id);
-    const total_hours = all.reduce((s: number, a) => s + (a.total_hours ?? 0), 0);
-    const total_days = new Set(all.map((a) => a.date).filter(Boolean)).size;
+    const userSummary = summaryMap.get(ojt.id);
+    const total_hours = userSummary?.total_hours ?? 0;
+    const total_days = userSummary?.total_days ?? 0;
     return {
       profile: ojt,
       total_hours,
@@ -32,9 +32,11 @@ export default async function ReportsPage() {
     };
   }).sort((a, b) => b.total_hours - a.total_hours);
 
+
   return (
-    <RequireOrganization featureName="Reports" serverProfile={profile as Profile}>
+    <RequireOrganization featureName="Reports" serverProfile={profile}>
       <ReportsClient initialReports={reports} />
     </RequireOrganization>
   );
 }
+

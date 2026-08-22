@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/session';
 import { createOrganization, joinOrganization } from '@/lib/services/organization';
 import { emitEvent } from '@/lib/automation';
 import type { OrganizationCreatedPayload } from '@/lib/automation';
+import { revalidateSettingsTag, revalidateOjtsTag } from '@/lib/cache';
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,10 +16,9 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     // 1. Get authenticated user from active session
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user } = await getSession();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized. Please sign in again.' }, { status: 401 });
     }
 
@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
         createdBy: user.id,
       }, org.id);
 
+      revalidateSettingsTag(org.id);
+      revalidateOjtsTag(org.id);
+
       return NextResponse.json({ success: true, role: 'admin', orgId: org.id });
     } else if (action === 'join') {
       if (!inviteCode?.trim()) {
@@ -50,6 +53,9 @@ export async function POST(request: NextRequest) {
 
       // Join organization using invite code
       const org = await joinOrganization(supabaseAdmin, inviteCode, user.id);
+
+      revalidateOjtsTag(org.id);
+
       return NextResponse.json({ success: true, role: 'ojt', orgId: org.id });
     } else {
       return NextResponse.json({ error: 'Invalid action.' }, { status: 400 });
@@ -59,3 +65,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
